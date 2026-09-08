@@ -752,7 +752,7 @@ test framework는 Phase 2 승인 전에 선택합니다. 후보를 적었다는 
 
 ## 도메인 구현 전 구조 정합성 검토 — 2026-09-08
 
-Status: domain 분리 승인·D1 초안 구현/검증 완료. 기반 코드는 유지하며 D2·D3와 API 연결은 후속입니다.
+Status: D1 도메인·D2 schema/migration 테스트 DB 검증 완료. 개발 DB 적용·D3 저장 업무·API 연결은 후속입니다.
 
 기존 `chat_core`·`internal_chat` 별도 Python 패키지 제안은 사용자와 확인한
 `services/chat/src/chat_service/` 구조에 맞춥니다. 기능 소유권의 논리적 구분은 유지하지만
@@ -785,7 +785,7 @@ Transaction은 업무가 `session.begin()` 등의 명시적 경계로 시작하�
 | 순서 | 변경 묶음 | 검증 |
 | --- | --- | --- |
 | D1 완료 | `domain/chat.py`, `exceptions/chat.py`, `tests/test_chat_domain.py` | 신규 26개: 원문 보존·공백-only/길이·UTF-8 검증·불변성·동일/다른 payload·해시 충돌 판정 |
-| D2 | `models/chat.py`, Alembic 설정·최초 revision, migration 시험 | 격리 테스트 DB에서 FK·unique·check와 migration 적용 확인 |
+| D2 완료 | `models/chat.py`, Alembic 설정·최초 revision, migration 시험 | 격리 테스트 DB에서 FK·unique·check, 재실행·되돌리기·모델 비교·DDL 실패 rollback 확인 |
 | D3 | `repositories/chat.py`, `services/chat.py`, 저장 통합 시험 | 실제 동시 요청·중복·충돌·rollback·비회원 거절 |
 
 검증 명령은 [서비스 README](../services/chat/README.md#검증)를 사용합니다. D2 전에 migration 실행
@@ -803,6 +803,25 @@ v1 fingerprint는 `chat.message.payload:1` + NUL 구분자 + 정확한 본문 UT
 Domain 순수 시험은 DB 멱등성·권한·동시 저장 보장의 증거가 아닙니다.
 검증: 기본 pytest 93개 통과·DB 12개 제외, 기존 deprecated alias 경고 1건을 유지했습니다.
 이번 초안에서는 DB 시험 재실행·migration·API 등록·새 패키지 설치를 수행하지 않았습니다.
+
+### D2 실행: 테이블과 migration
+
+목표: 기존 ERD의 `users`, `conversations`, `members`, `messages`를 PostgreSQL 제약과 최초 Alembic revision으로 구현합니다. SQLAlchemy Core Table을 사용하며 빈 ORM 클래스 계층은 만들지 않습니다.
+
+예상 결과:
+- UUID PK/FK, 참여자 복합 PK, 방별 seq·멱등 키 unique, 양수 seq·비음수 counter·본문 길이·payload 형식 check가 실제 DB에서 동작합니다.
+- migration upgrade·재실행·downgrade·재적용과 모델 일치 여부를 실행별 테스트 schema에서 검증합니다.
+- migration은 앱 lifespan과 별개이며 앱 계정에 DDL 권한을 주지 않습니다. 개발 DB에는 이번에 적용하지 않습니다.
+
+실행 순서: `models/chat.py` → 공식 Alembic async 초기화·독립된 최초 revision → `tests/integration/test_chat_schema.py`입니다. revision은 변경 가능한 런타임 모델을 import하지 않습니다.
+테스트 대상은 기존 `laughtale_chat_test`/`chat_test`와 `run_<uuid>` schema뿐이며 자신의 schema만 정리합니다.
+개발 migration은 `chat_owner` 소유권으로 실행하도록 구성하되, LOGIN migration 계정·배포 경로를 마련하고 승인 후 적용합니다. 기본 CLI는 앱 `.env`를 읽지 않습니다.
+제약만으로 DM 참여자 정확히 2명·메시지/counter 동시 갱신·원문/hash 일치를 보장하지 않습니다. 이 업무 불변조건은 D3에서 검증하며, Outbox·API·실제 인증은 이번 범위가 아닙니다.
+
+D2 결과: 전용 시험 22개(실제 DB 17개·CLI 5개)를 통과했습니다. 0001 revision은 업무 테이블 네 개만 소유하며 Alembic의 버전 표는 같은 schema에 둡니다.
+전체 검증은 DB 포함 127개, 기본 98개·DB 29개 제외이며 Ruff·포맷·ty·빌드가 통과했습니다. 시험 후 고유 schema·테스트 연결은 0개이며 개발 DB의 chat 테이블도 0개로 유지했습니다.
+개발용 migration LOGIN 역할/HBA/secret을 만들거나 개발 DB에 schema를 적용하지 않았습니다. 온라인 개발 경로는 구성만 했으며 검증된 운영 경로라고 주장하지 않습니다.
+현재 구조·실행 명령·제약은 [서비스 README](../services/chat/README.md#채팅-테이블과-migration)가 소유합니다.
 
 ## 최소 사용자 흐름
 

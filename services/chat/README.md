@@ -30,6 +30,7 @@ flowchart LR
 | `bootstrap/` | 앱 조립·시작·종료 |
 | `core/`, `contracts/` | 설정·DB 자원·관측 구현과 공통 계약 |
 | `domain/chat.py`, `exceptions/chat.py` | 메시지 값·본문 검증·payload 비교와 업무 오류. 아직 API에 연결하지 않았습니다. |
+| `models/chat.py`, `migrations/` | SQLAlchemy Core Table과 독립된 Alembic revision. 실제 업무 저장은 후속입니다. |
 | `dependencies/`, `routers/` | HTTP DI와 endpoint |
 | `services/`, `repositories/` (후속) | 업무·트랜잭션 경계와 저장소 접근 |
 | `tests/integration/test_postgres.py` | 실제 PostgreSQL 정상·실패 경로 |
@@ -44,6 +45,37 @@ flowchart LR
 `payload_fingerprint()`는 버전과 원문의 digest를 만들고, `ensure_same_payload()`는 버전과 원문을
 직접 비교합니다. 같은 키인지 조회하고 권한을 확인하는 작업은 후속 Service/Repository 책임입니다.
 이 값과 함수는 DB·HTTP·ORM에 의존하지 않습니다. 실제 저장·중복 방지·방별 순서 보장은 아직 구현하지 않았습니다.
+
+### 채팅 테이블과 migration
+
+아래 네 테이블의 migration을 **격리 테스트 DB에서 검증했습니다**. 개발 DB에는 아직 적용하지 않았습니다.
+
+```mermaid
+erDiagram
+    USERS ||--o{ MEMBERS : participates
+    CONVERSATIONS ||--o{ MEMBERS : contains
+    CONVERSATIONS ||--o{ MESSAGES : owns
+    MEMBERS ||--o{ MESSAGES : sends
+```
+
+UUID PK/FK, 참여자 복합 PK, `(conversation_id, seq)`와 `(conversation_id, sender_id, client_message_id)`의 unique를 둡니다. 발신자·방 복합 FK는 같은 방의 참여자만 참조합니다.
+`seq > 0`, `last_seq >= 0`, DM kind, 본문 길이, payload v1·64자리 소문자 hex 형식을 DB에서도 검사합니다.
+공백-only 정책·원문/hash 일치·정확히 두 명인 DM·counter와 메시지의 동시 갱신은 이 제약만으로 보장하지 않습니다.
+그룹·멤버 탈퇴/삭제·payload 버전 확대는 제약과 업무 정책을 함께 변경해야 합니다. Outbox는 아직 없습니다.
+
+Alembic 1.19.2를 lock에 고정했습니다. 다음 명령은 DB에 접속하지 않고 검토용 SQL만 출력합니다.
+
+```sh
+uv tool run --from uv==0.12.10 uv run --locked alembic upgrade head --sql
+```
+
+앱 시작은 migration을 실행하지 않습니다. 기본 CLI는 앱 `.env`·`DB_PRIMARY_URL`을 읽지 않으며 별도 `CHAT_MIGRATION_URL`만 허용합니다.
+개발용 온라인 경로는 lab Primary의 `chat_migrator`로 연결하고 트랜잭션 안에서 `SET LOCAL ROLE chat_owner`를 수행하도록 구성했습니다. **이 LOGIN 역할·HBA·secret은 아직 마련하지 않았으며 이 경로는 실행 검증 전입니다.** 적용 전에 별도 준비합니다. writer에 DDL 권한을 주지 않습니다.
+테스트는 확인한 `chat_test` 연결을 Alembic에 전달하고 자신이 소유한 `run_<uuid>` schema에만 적용·되돌리기를 수행합니다. schema는 시험이 생성·정리하며 migration이 공유 schema를 생성·삭제하지 않습니다.
+`downgrade`는 테이블과 데이터를 삭제하므로 일반 운영 복구 명령으로 사용하지 않습니다. 이번 되돌리기는 임시 테스트 schema에서만 검증했습니다.
+
+연결 공유 구현 근거: [Alembic async cookbook](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic), 확인일 2026-09-08.
+migration은 저장소 checkout 또는 sdist의 `alembic.ini`·`migrations/`로 실행합니다. wheel 단독 설치에는 이 파일을 포함하지 않습니다. sdist에는 [uv source-include](https://docs.astral.sh/uv/reference/settings/#source-include)로 명시적으로 포함합니다.
 
 ## 설치·실행
 
@@ -71,7 +103,7 @@ URL query 옵션은 현재 거절합니다. TLS·운영 연결 정책은 외부 
 사용자가 승인한 [격리 Primary/Replica 실험 환경](../../infra/postgres/README.md)을 사용합니다. Primary는 loopback 5440, Replica는 5441이며 DB는 둘 다 `laughtale_chat`입니다. 공용 DB는 변경하지 않았습니다.
 이 머신의 Git 제외 `.env`에는 Primary의 `chat_writer` URL을 설정했습니다. 다른 checkout에서는 실험 환경의 로컬 비밀번호로 설정합니다. 앱의 읽기 Replica 연결·자동 라우팅은 아직 없습니다.
 2026-09-08 실제 Primary에서 앱 lifespan·Session DI 연결/반환과 테스트 전용 DB의 commit·rollback·잠금·취소를 검증했습니다. Replica는 별도 테스트 DB가 아닙니다.
-메시지 schema와 Alembic migration은 후속입니다. 통합 시험은 합성 업무 트랜잭션이며 채팅 정합성 검증을 대신하지 않습니다.
+메시지 schema와 Alembic migration은 위 단계에서 테스트 DB 검증까지 완료했습니다. 기반 트랜잭션 시험은 합성 업무이며 실제 채팅 저장 정합성 검증을 대신하지 않습니다.
 DB 오류의 업무별 재시도·공개 응답 매핑도 메시지 트랜잭션 도입 시 검증합니다. 임의 자동 재시도는 없습니다.
 
 구현 근거: [SQLAlchemy 비동기 engine](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html), [asyncpg 연결 인자](https://magicstack.github.io/asyncpg/current/api/index.html#asyncpg.connection.connect). 확인일: 2026-09-08.
@@ -93,10 +125,9 @@ uv tool run --from uv==0.12.10 uv build
 uv tool run --from uv==0.12.10 uv run --env-file .env.test --locked pytest -q --postgres
 ```
 
-2026-09-08: 기본 67개 통과·DB 시험 12개 제외, `--postgres` 실행은 총 79개 통과했습니다. DB 시험은 대상 URL과 접속 후 DB/역할/Primary를 확인하고 실행별 schema만 생성·삭제합니다. 개발 DB·Replica·공용 포트를 거절합니다.
+2026-09-08: 기본 98개 통과·DB 시험 29개 제외, `--postgres` 실행은 총 127개 통과했습니다. Ruff·포맷·ty·wheel/sdist 빌드도 통과했습니다. DB 시험은 대상 URL과 접속 후 DB/역할/Primary를 확인하고 실행별 schema만 생성·삭제합니다. 개발 DB·Replica·공용 포트를 거절합니다.
 commit·본문 실패·commit 실패·취소, pool/lock/statement timeout 후 재사용·계측, 잘못된 인증·연결 불가 시 시작 실패와 engine 해제를 검사합니다. 인증 실패 시험에는 합성 비밀번호를 사용합니다.
 pytest 기본 traceback은 짧게 제한합니다. 상세 traceback·`--showlocals`·환경 출력에는 접속 정보가 포함될 수 있으므로 원문을 공유하지 않습니다.
 템플릿에서 상속한 Starlette deprecated alias 경고는 숨기지 않고 표시합니다.
-도메인 초안 추가 후 기본 시험은 93개 통과·DB 시험 12개 제외입니다(신규 도메인 시험 26개).
-이번 도메인 변경에서는 DB 시험을 다시 실행하지 않았습니다. 위 79개 결과는 기반 단계의 실행 기록입니다.
+도메인 시험 26개와 D2 전용 22개는 본문 정책·payload 비교, migration 왕복·모델 차이 없음·제약 위반·DDL 실패 rollback·잘못된 대상 거절을 검증합니다.
 DB Docker·복제 smoke는 인프라 안내에서 별도로 검증합니다. K8s 배포·샤딩·Sentry·대규모 부하 시험은 이번 기반 도입에 포함하지 않습니다.
