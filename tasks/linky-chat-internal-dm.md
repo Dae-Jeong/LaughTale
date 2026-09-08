@@ -806,7 +806,7 @@ Domain 순수 시험은 DB 멱등성·권한·동시 저장 보장의 증거가 
 
 ### D2 실행: 테이블과 migration
 
-목표: 기존 ERD의 `users`, `conversations`, `members`, `messages`를 PostgreSQL 제약과 최초 Alembic revision으로 구현합니다. SQLAlchemy Core Table을 사용하며 빈 ORM 클래스 계층은 만들지 않습니다.
+목표: 기존 ERD의 `users`, `conversations`, `members`, `messages`를 PostgreSQL 제약과 최초 Alembic revision으로 구현합니다. 초기 D2는 Core Table로 구현했으며 이후 사용자 승인으로 아래 D2-ORM에서 Python 매핑만 전환했습니다.
 
 예상 결과:
 - UUID PK/FK, 참여자 복합 PK, 방별 seq·멱등 키 unique, 양수 seq·비음수 counter·본문 길이·payload 형식 check가 실제 DB에서 동작합니다.
@@ -822,6 +822,33 @@ D2 결과: 전용 시험 22개(실제 DB 17개·CLI 5개)를 통과했습니다.
 전체 검증은 DB 포함 127개, 기본 98개·DB 29개 제외이며 Ruff·포맷·ty·빌드가 통과했습니다. 시험 후 고유 schema·테스트 연결은 0개이며 개발 DB의 chat 테이블도 0개로 유지했습니다.
 개발용 migration LOGIN 역할/HBA/secret을 만들거나 개발 DB에 schema를 적용하지 않았습니다. 온라인 개발 경로는 구성만 했으며 검증된 운영 경로라고 주장하지 않습니다.
 현재 구조·실행 명령·제약은 [서비스 README](../services/chat/README.md#채팅-테이블과-migration)가 소유합니다.
+
+### D2-ORM: v2 ORM 매핑 전환
+
+Status: 사용자 승인 · 계획·구현·검증 완료. D3 저장 업무와 별도입니다.
+
+목표: Core Table 직접 정의를 SQLAlchemy 2.0.52의 `DeclarativeBase`·`Mapped`·`mapped_column`으로 전환합니다. 도메인 정책은 유지하고 영속 매핑만 변경합니다.
+
+예상 결과:
+- `User`, `Conversation`, `Member`, `Message` ORM 모델이 기존 네 테이블에 대응합니다. 컬럼·기본값·FK·unique·check는 변경하지 않습니다.
+- `CreatedAtMixin`은 기존 created_at이 있는 Message만 사용합니다. 모든 테이블의 강제 timestamp·updated_at·자동 relationship·BaseRepository를 추가하지 않습니다.
+- 기존 0001 revision을 수정하지 않고 실제 테스트 DB에서 migration 비교와 ORM 저장·조회·rollback을 통과합니다.
+
+| 순서 | 변경 파일 | 검증 |
+| --- | --- | --- |
+| O1 | `models/base.py`, `models/chat.py`, `tests/test_chat_orm_mapping.py` | typed 모델·Mixin·기존 컬럼/제약·관계 자동 로딩 없음 |
+| O2 | `tests/integration/test_chat_orm.py`, 필요 시 migration 비교 설정 | 실제 Session 객체 저장/조회·서버 기본값·rollback·모델 차이 없음 |
+| O3 | 서비스 README·이 task | 전체 pytest·Ruff·ty·빌드, migration/의존성 변경 없음 |
+
+예시: `id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)`처럼 명시적으로 매핑합니다.
+기존 `metadata` 소비 경로는 `Base.metadata`의 참조로 유지하며 Core와 ORM 테이블을 이중 정의하지 않습니다.
+테스트는 기존 `--postgres` guard와 실행별 `run_<uuid>` schema를 사용합니다. 개발 DB·공유 DB·권한·인프라는 변경하지 않습니다.
+ORM 객체는 앞으로 Repository 안에서만 사용하며 순수 domain/API 경계로 노출하지 않습니다. 관계 조회가 필요해질 때 명시적 join/로딩 전략을 추가합니다.
+검증 명령은 [서비스 README](../services/chat/README.md#검증)를 따릅니다. 스키마 diff가 나오면 새 migration으로 덮지 않고 매핑 차이를 고칩니다.
+
+- [x] O1: ORM 매핑·선택적 Mixin·자동 관계 로딩 없음 시험 5개를 통과했습니다.
+- [x] O2: 실제 ORM 저장/조회와 flush 후 rollback 2개를 통과했습니다. Alembic 서버 기본값 비교를 켠 뒤에도 차이가 없습니다.
+- [x] O3: 전체 134개, 기본 103개·DB 31개 제외와 lint·format·ty·빌드를 검증했습니다. 원래 Core 모델과 생성 PostgreSQL DDL도 완전히 같습니다. 0001 revision·의존성·개발 DB는 변경하지 않았습니다.
 
 ## 최소 사용자 흐름
 

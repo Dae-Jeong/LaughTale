@@ -30,7 +30,8 @@ flowchart LR
 | `bootstrap/` | 앱 조립·시작·종료 |
 | `core/`, `contracts/` | 설정·DB 자원·관측 구현과 공통 계약 |
 | `domain/chat.py`, `exceptions/chat.py` | 메시지 값·본문 검증·payload 비교와 업무 오류. 아직 API에 연결하지 않았습니다. |
-| `models/chat.py`, `migrations/` | SQLAlchemy Core Table과 독립된 Alembic revision. 실제 업무 저장은 후속입니다. |
+| `models/base.py` | ORM Base·metadata와 선택적으로 사용하는 CreatedAtMixin |
+| `models/chat.py`, `migrations/` | SQLAlchemy v2 ORM 매핑과 독립된 Alembic revision. 실제 업무 저장은 후속입니다. |
 | `dependencies/`, `routers/` | HTTP DI와 endpoint |
 | `services/`, `repositories/` (후속) | 업무·트랜잭션 경계와 저장소 접근 |
 | `tests/integration/test_postgres.py` | 실제 PostgreSQL 정상·실패 경로 |
@@ -47,6 +48,10 @@ flowchart LR
 이 값과 함수는 DB·HTTP·ORM에 의존하지 않습니다. 실제 저장·중복 방지·방별 순서 보장은 아직 구현하지 않았습니다.
 
 ### 채팅 테이블과 migration
+
+매핑은 `User`, `Conversation`, `Member`, `Message` ORM 클래스가 소유합니다. `Mapped`·`mapped_column`을 사용하며 기존 `metadata`는 `Base.metadata`를 가리킵니다. Core 테이블을 별도로 중복 정의하지 않습니다.
+`CreatedAtMixin`은 현재 `Message`에만 적용합니다. 기존 DB의 timezone-aware `created_at`과 서버 기본값을 유지하며 `updated_at`은 추가하지 않았습니다. 자동 `relationship`은 없으며 필요한 관계 조회는 후속 Repository에서 명시적으로 작성합니다.
+이 선택은 Laughtale의 적용 변경입니다. 고정된 Backend Template의 Core 예제는 수정하지 않습니다. [SQLAlchemy v2 Mixin 기준](https://docs.sqlalchemy.org/en/20/orm/declarative_mixins.html)을 참고했습니다.
 
 아래 네 테이블의 migration을 **격리 테스트 DB에서 검증했습니다**. 개발 DB에는 아직 적용하지 않았습니다.
 
@@ -125,9 +130,10 @@ uv tool run --from uv==0.12.10 uv build
 uv tool run --from uv==0.12.10 uv run --env-file .env.test --locked pytest -q --postgres
 ```
 
-2026-09-08: 기본 98개 통과·DB 시험 29개 제외, `--postgres` 실행은 총 127개 통과했습니다. Ruff·포맷·ty·wheel/sdist 빌드도 통과했습니다. DB 시험은 대상 URL과 접속 후 DB/역할/Primary를 확인하고 실행별 schema만 생성·삭제합니다. 개발 DB·Replica·공용 포트를 거절합니다.
+2026-09-08: 기본 103개 통과·DB 시험 31개 제외, `--postgres` 실행은 총 134개 통과했습니다. Ruff·포맷·ty·wheel/sdist 빌드도 통과했습니다. DB 시험은 대상 URL과 접속 후 DB/역할/Primary를 확인하고 실행별 schema만 생성·삭제합니다. 개발 DB·Replica·공용 포트를 거절합니다.
 commit·본문 실패·commit 실패·취소, pool/lock/statement timeout 후 재사용·계측, 잘못된 인증·연결 불가 시 시작 실패와 engine 해제를 검사합니다. 인증 실패 시험에는 합성 비밀번호를 사용합니다.
 pytest 기본 traceback은 짧게 제한합니다. 상세 traceback·`--showlocals`·환경 출력에는 접속 정보가 포함될 수 있으므로 원문을 공유하지 않습니다.
 템플릿에서 상속한 Starlette deprecated alias 경고는 숨기지 않고 표시합니다.
 도메인 시험 26개와 D2 전용 22개는 본문 정책·payload 비교, migration 왕복·모델 차이 없음·제약 위반·DDL 실패 rollback·잘못된 대상 거절을 검증합니다.
+ORM 전환 시험 7개는 매핑·Mixin·실제 객체 저장/조회·서버 기본값·flush 뒤 rollback을 검증합니다. 전환 전후 PostgreSQL CREATE TABLE SQL이 동일하며 기존 0001 revision을 유지했습니다. Alembic 비교에는 서버 기본값 검사도 포함합니다.
 DB Docker·복제 smoke는 인프라 안내에서 별도로 검증합니다. K8s 배포·샤딩·Sentry·대규모 부하 시험은 이번 기반 도입에 포함하지 않습니다.

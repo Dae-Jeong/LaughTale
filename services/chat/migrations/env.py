@@ -57,6 +57,7 @@ def do_run_migrations(connection: Connection) -> None:
         include_schemas=True,
         include_name=lambda name, kind, parents: kind != "schema" or name == schema,
         compare_type=True,
+        compare_server_default=True,
     )
     with context.begin_transaction():
         context.run_migrations()
