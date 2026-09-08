@@ -750,39 +750,59 @@ Next.js App Router의 Node server mode와 pnpm은 재승인 대상이 아닙니�
 Python package manager, FastAPI, PostgreSQL 사용 여부와 driver·mapping·migration 도구,
 test framework는 Phase 2 승인 전에 선택합니다. 후보를 적었다는 이유로 dependency를 설치하지 않습니다.
 
-## 제안 source layout
+## 도메인 구현 전 구조 정합성 검토 — 2026-09-08
 
-아래 경로는 구현 후 사용할 예정 경로이며 현재 존재를 주장하지 않습니다. 책임이 실제로
-분리될 때만 파일을 만들고, 한 함수로 충분한 책임에 빈 class나 wrapper를 추가하지 않습니다.
+Status: domain 분리 승인·D1 초안 구현/검증 완료. 기반 코드는 유지하며 D2·D3와 API 연결은 후속입니다.
 
-```text
-apps/web/
-  app/internal-chat/[conversationId]/page.tsx
-  src/features/internal-chat/
-    InternalDmView.tsx
-    internalDmClient.ts
-services/chat/
-  src/
-    chat_core/
-      domain/message.py
-      application/message_store.py
-      persistence/postgres_message_store.py
-    internal_chat/
-      application/send_direct_message.py
-      application/list_direct_messages.py
-      api/http.py
-      api/realtime.py
-  tests/
-    unit/
-    integration/
-tests/e2e/
-  internal-dm.spec.ts
-```
+기존 `chat_core`·`internal_chat` 별도 Python 패키지 제안은 사용자와 확인한
+`services/chat/src/chat_service/` 구조에 맞춥니다. 기능 소유권의 논리적 구분은 유지하지만
+같은 기능을 두 패키지에 중복 구현하지 않습니다. 공통 기반의 `bootstrap`·DI·관측은 유지합니다.
 
-HTTP adapter는 요청 parsing·형식 검증·session context 전달·응답 변환만 담당합니다.
-`internal-chat` use case는 권한과 저장 순서를 조정하고, PostgreSQL query·transaction은
-`chat-core`의 persistence adapter가 담당합니다. ORM object나 HTTP object를 계층 사이에
-전달하지 않습니다.
+| 위치 (`src/chat_service/` 기준) | 책임 |
+| --- | --- |
+| `domain/chat.py` | 메시지의 내부 값과 순수 규칙부터 구현합니다. HTTP·ORM·DB I/O를 알지 않습니다. 대화·참여 타입은 필요한 업무에서 추가합니다. |
+| `models/chat.py` | SQLAlchemy 테이블 매핑·FK·unique·check·인덱스 |
+| `repositories/chat.py` | 방 잠금·참여 조회·멱등 조회·저장. 내부 타입을 반환하며 commit하지 않습니다. |
+| `services/chat.py` | 전송 업무: 권한·멱등성·순서와 트랜잭션 경계. SQL은 작성하지 않습니다. |
+| `schemas/chat.py`, `routers/chat.py` | 요청·응답과 HTTP 변환. sender는 요청 본문이 아닌 확인된 actor에서 받습니다. |
+| `dependencies/` | 세션·actor·업무 의존성 조립 |
+
+영속 모델과 도메인 타입은 DB 매핑 여부로 구분합니다. 모든 테이블에 도메인 클래스를
+기계적으로 대응시키거나 메시지 목록 전체를 대화 객체에 적재하지 않습니다.
+Transaction은 업무가 `session.begin()` 등의 명시적 경계로 시작하고 commit 성공 후 결과를
+반환합니다. Repository는 같은 세션에 참여하며 중간 commit을 하지 않습니다.
+기존의 “persistence adapter가 query·transaction을 담당한다”는 모호한 표현을 이 구분으로 대체합니다.
+
+### 첫 구현 절편 제안: 메시지 하나의 정확한 저장
+
+목표: 기존 ERD와 메시지 계약을 실제 PostgreSQL 저장 흐름으로 연결합니다.
+
+예상 결과:
+- 참여자만 저장할 수 있고, 동일 key·동일 원문은 기존 결과, 다른 원문은 충돌로 끝납니다.
+- 방별 counter와 메시지가 함께 commit/rollback되며 동시 전송에도 committed seq가 연속입니다.
+- 실제 DB 시험에서 실패·취소 후 부분 저장이 없고 기존 기반 회귀 시험을 유지합니다.
+
+| 순서 | 변경 묶음 | 검증 |
+| --- | --- | --- |
+| D1 완료 | `domain/chat.py`, `exceptions/chat.py`, `tests/test_chat_domain.py` | 신규 26개: 원문 보존·공백-only/길이·UTF-8 검증·불변성·동일/다른 payload·해시 충돌 판정 |
+| D2 | `models/chat.py`, Alembic 설정·최초 revision, migration 시험 | 격리 테스트 DB에서 FK·unique·check와 migration 적용 확인 |
+| D3 | `repositories/chat.py`, `services/chat.py`, 저장 통합 시험 | 실제 동시 요청·중복·충돌·rollback·비회원 거절 |
+
+검증 명령은 [서비스 README](../services/chat/README.md#검증)를 사용합니다. D2 전에 migration 실행
+계정/owner 전환·테스트 schema 격리를 확정합니다. 앱 계정의 DDL 권한은 늘리지 않습니다.
+HTTP/실험 session 연결은 이 저장 절편 이후이며, 실제 인증·WS·외부 연동·그룹 관리·Kafka는
+이번 완료 조건에 포함하지 않습니다.
+
+D1 초안 범위: 표준 라이브러리 기반 불변 `MessagePayload`와 순수 함수로 구현합니다.
+본문은 1~2,000 Unicode code point이며 공백-only를 거절하고 원문을 정규화하지 않습니다.
+UTF-8로 표현할 수 없는 surrogate와 PostgreSQL text에 저장할 수 없는 NUL은 잘라내지 않고 거절합니다.
+v1 fingerprint는 `chat.message.payload:1` + NUL 구분자 + 정확한 본문 UTF-8의 SHA-256입니다.
+동일 payload 판정은 버전·원문을 직접 비교하며 해시 일치만으로 replay를 허용하지 않습니다.
+호출자는 먼저 같은 `(conversation_id, sender_id, client_message_id)`와 현재 권한을 확인해야 합니다.
+오류는 `exceptions/chat.py`의 업무 예외이며 HTTP 매핑은 이번에 추가하지 않습니다.
+Domain 순수 시험은 DB 멱등성·권한·동시 저장 보장의 증거가 아닙니다.
+검증: 기본 pytest 93개 통과·DB 12개 제외, 기존 deprecated alias 경고 1건을 유지했습니다.
+이번 초안에서는 DB 시험 재실행·migration·API 등록·새 패키지 설치를 수행하지 않았습니다.
 
 ## 최소 사용자 흐름
 

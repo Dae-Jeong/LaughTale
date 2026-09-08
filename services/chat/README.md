@@ -29,12 +29,21 @@ flowchart LR
 | --- | --- |
 | `bootstrap/` | 앱 조립·시작·종료 |
 | `core/`, `contracts/` | 설정·DB 자원·관측 구현과 공통 계약 |
+| `domain/chat.py`, `exceptions/chat.py` | 메시지 값·본문 검증·payload 비교와 업무 오류. 아직 API에 연결하지 않았습니다. |
 | `dependencies/`, `routers/` | HTTP DI와 endpoint |
 | `services/`, `repositories/` (후속) | 업무·트랜잭션 경계와 저장소 접근 |
 | `tests/integration/test_postgres.py` | 실제 PostgreSQL 정상·실패 경로 |
 | `../../infra/postgres/` | DB 배포·계정·복제·실험 검증 |
 
 공통 설계 정본은 [Backend Template](../../external/backend-template/design/README.md), 제품 설계는 [채팅 task](../../tasks/linky-chat-internal-dm.md)가 소유합니다.
+
+### 메시지 도메인 초안
+
+`MessagePayload(text)`는 원문을 보존하는 불변 값입니다. 본문은 1~2,000 Unicode code point이며
+공백-only·NUL·잘못된 UTF-8을 거절합니다. 길이는 화면의 글자 묶음이나 UTF-8 byte 수가 아닙니다.
+`payload_fingerprint()`는 버전과 원문의 digest를 만들고, `ensure_same_payload()`는 버전과 원문을
+직접 비교합니다. 같은 키인지 조회하고 권한을 확인하는 작업은 후속 Service/Repository 책임입니다.
+이 값과 함수는 DB·HTTP·ORM에 의존하지 않습니다. 실제 저장·중복 방지·방별 순서 보장은 아직 구현하지 않았습니다.
 
 ## 설치·실행
 
@@ -88,4 +97,6 @@ uv tool run --from uv==0.12.10 uv run --env-file .env.test --locked pytest -q --
 commit·본문 실패·commit 실패·취소, pool/lock/statement timeout 후 재사용·계측, 잘못된 인증·연결 불가 시 시작 실패와 engine 해제를 검사합니다. 인증 실패 시험에는 합성 비밀번호를 사용합니다.
 pytest 기본 traceback은 짧게 제한합니다. 상세 traceback·`--showlocals`·환경 출력에는 접속 정보가 포함될 수 있으므로 원문을 공유하지 않습니다.
 템플릿에서 상속한 Starlette deprecated alias 경고는 숨기지 않고 표시합니다.
+도메인 초안 추가 후 기본 시험은 93개 통과·DB 시험 12개 제외입니다(신규 도메인 시험 26개).
+이번 도메인 변경에서는 DB 시험을 다시 실행하지 않았습니다. 위 79개 결과는 기반 단계의 실행 기록입니다.
 DB Docker·복제 smoke는 인프라 안내에서 별도로 검증합니다. K8s 배포·샤딩·Sentry·대규모 부하 시험은 이번 기반 도입에 포함하지 않습니다.
