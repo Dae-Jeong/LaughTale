@@ -1,0 +1,52 @@
+[project]
+name = "laughtale-catalog-hub"
+version = "0.1.0"
+description = "Laughtale synthetic assembled-response caching experiment service (LAUGH-KNOWLEDGE-READ-001 successor)"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi>=0.141.1",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.0.52,<2.1",
+    "uvicorn>=0.52.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "catalog_hub"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib --strict-config --strict-markers --tb=short"
+markers = ["postgres: tests that require the local synthetic PostgreSQL database"]
+filterwarnings = [
+    "error",
+    # Starlette 1.6.0의 별칭 참조입니다. 수정 릴리스 도입 후 제거합니다.
+    'default:^The anyio\.abc\.BlockingPortal alias is deprecated, use anyio\.from_thread\.BlockingPortal instead\.$:DeprecationWarning:starlette\.testclient',
+]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.src]
+include = ["src", "tests"]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.12.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+    "ty>=0.0.78",
+]

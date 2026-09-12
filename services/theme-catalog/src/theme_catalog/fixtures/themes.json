@@ -1,0 +1,220 @@
+{
+  "fixture_version": 1,
+  "seed": 41,
+  "themes": [
+    {
+      "theme_id": "theme-0001",
+      "background": "#C31524",
+      "foreground": "#AA195D",
+      "spacing_px": 29
+    },
+    {
+      "theme_id": "theme-0002",
+      "background": "#5502C3",
+      "foreground": "#C57142",
+      "spacing_px": 36
+    },
+    {
+      "theme_id": "theme-0003",
+      "background": "#8DB6EC",
+      "foreground": "#C45FE3",
+      "spacing_px": 1
+    },
+    {
+      "theme_id": "theme-0004",
+      "background": "#7F8635",
+      "foreground": "#096309",
+      "spacing_px": 56
+    },
+    {
+      "theme_id": "theme-0005",
+      "background": "#4F62A3",
+      "foreground": "#4CB72E",
+      "spacing_px": 40
+    },
+    {
+      "theme_id": "theme-0006",
+      "background": "#55C3F9",
+      "foreground": "#83D8C2",
+      "spacing_px": 7
+    },
+    {
+      "theme_id": "theme-0007",
+      "background": "#3D58E1",
+      "foreground": "#10E631",
+      "spacing_px": 55
+    },
+    {
+      "theme_id": "theme-0008",
+      "background": "#904CD0",
+      "foreground": "#6E86F3",
+      "spacing_px": 9
+    },
+    {
+      "theme_id": "theme-0009",
+      "background": "#B86CE1",
+      "foreground": "#F34B82",
+      "spacing_px": 16
+    },
+    {
+      "theme_id": "theme-0010",
+      "background": "#097DC9",
+      "foreground": "#3F5E76",
+      "spacing_px": 12
+    },
+    {
+      "theme_id": "theme-0011",
+      "background": "#498470",
+      "foreground": "#5B0118",
+      "spacing_px": 6
+    },
+    {
+      "theme_id": "theme-0012",
+      "background": "#887ACB",
+      "foreground": "#A2B6B6",
+      "spacing_px": 28
+    },
+    {
+      "theme_id": "theme-0013",
+      "background": "#0D59D5",
+      "foreground": "#5D3AF5",
+      "spacing_px": 55
+    },
+    {
+      "theme_id": "theme-0014",
+      "background": "#1D6252",
+      "foreground": "#9A533C",
+      "spacing_px": 51
+    },
+    {
+      "theme_id": "theme-0015",
+      "background": "#4AB466",
+      "foreground": "#36A2E4",
+      "spacing_px": 11
+    },
+    {
+      "theme_id": "theme-0016",
+      "background": "#D07B5B",
+      "foreground": "#0B0246",
+      "spacing_px": 63
+    },
+    {
+      "theme_id": "theme-0017",
+      "background": "#CA266E",
+      "foreground": "#75F76B",
+      "spacing_px": 2
+    },
+    {
+      "theme_id": "theme-0018",
+      "background": "#2BF81A",
+      "foreground": "#451812",
+      "spacing_px": 9
+    },
+    {
+      "theme_id": "theme-0019",
+      "background": "#EAB5A9",
+      "foreground": "#CDBE51",
+      "spacing_px": 54
+    },
+    {
+      "theme_id": "theme-0020",
+      "background": "#8F3ADE",
+      "foreground": "#0E6228",
+      "spacing_px": 1
+    },
+    {
+      "theme_id": "theme-0021",
+      "background": "#ED707D",
+      "foreground": "#A4CC35",
+      "spacing_px": 22
+    },
+    {
+      "theme_id": "theme-0022",
+      "background": "#47125E",
+      "foreground": "#21A75E",
+      "spacing_px": 5
+    },
+    {
+      "theme_id": "theme-0023",
+      "background": "#37FA01",
+      "foreground": "#415C09",
+      "spacing_px": 52
+    },
+    {
+      "theme_id": "theme-0024",
+      "background": "#2BAE91",
+      "foreground": "#D63605",
+      "spacing_px": 12
+    },
+    {
+      "theme_id": "theme-0025",
+      "background": "#7BC71D",
+      "foreground": "#70F3B7",
+      "spacing_px": 55
+    },
+    {
+      "theme_id": "theme-0026",
+      "background": "#B9F4ED",
+      "foreground": "#EB5763",
+      "spacing_px": 52
+    },
+    {
+      "theme_id": "theme-0027",
+      "background": "#E6685C",
+      "foreground": "#2A7E01",
+      "spacing_px": 35
+    },
+    {
+      "theme_id": "theme-0028",
+      "background": "#6C4DFA",
+      "foreground": "#7F6864",
+      "spacing_px": 35
+    },
+    {
+      "theme_id": "theme-0029",
+      "background": "#C12683",
+      "foreground": "#A6C745",
+      "spacing_px": 48
+    },
+    {
+      "theme_id": "theme-0030",
+      "background": "#96E86F",
+      "foreground": "#E1D01E",
+      "spacing_px": 10
+    },
+    {
+      "theme_id": "theme-0031",
+      "background": "#6DBAE0",
+      "foreground": "#5418ED",
+      "spacing_px": 27
+    },
+    {
+      "theme_id": "theme-0032",
+      "background": "#0FE264",
+      "foreground": "#737AD8",
+      "spacing_px": 23
+    }
+  ],
+  "updates": [
+    {
+      "after_completed_reads": 100,
+      "theme_id": "theme-0001",
+      "spacing_px": 10
+    },
+    {
+      "after_completed_reads": 200,
+      "theme_id": "theme-0009",
+      "spacing_px": 24
+    },
+    {
+      "after_completed_reads": 300,
+      "theme_id": "theme-0017",
+      "background": "#0A0A0A"
+    },
+    {
+      "after_completed_reads": 400,
+      "theme_id": "theme-0032",
+      "foreground": "#FFFFFF"
+    }
+  ]
+}

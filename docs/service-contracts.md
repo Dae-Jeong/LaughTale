@@ -6,6 +6,47 @@ Status: 기존 승인 규칙의 잔여 세부 선택 보존 · 2026-09-07
 새로운 공통 규칙집이 아니며 해당 책임을 변경할 때만 읽습니다. 공통 정본 채택 버전이 아래 내용을 수용하거나
 서비스 설계에서 명시적으로 변경하면 해당 조항을 제거합니다. 그 전에는 기존 의미를 유지합니다.
 
+## Python 서비스 환경과 실행 (하네스)
+
+2026-09-12 추가. `services/catalog-hub`가 자체 lock 없이 옆 서비스의 venv 바이너리로
+검증된 사례를 계기로 명문화합니다. 공통 정본이 이 조항을 수용하면 제거합니다.
+
+**이 repo는 uv workspace가 아닙니다.** 루트에 `pyproject.toml`이 없고 서비스마다
+환경을 따로 둡니다. 새 Python 서비스는 `services/<name>/`에 다음을 갖춥니다.
+
+- `pyproject.toml` — `build-backend = "uv_build"`, `requires-python` 고정,
+  런타임 의존성과 `[dependency-groups] dev`(pytest·ruff·ty)
+- `uv.lock` — **필수.** `uv lock`으로 생성하고 커밋합니다
+- `tests/conftest.py` — `--import-mode=importlib`에서 `tests/`를 import 경로에 넣습니다.
+  이게 있으면 `PYTHONPATH` 없이 표준 명령만으로 돌아갑니다
+
+실행은 **전부 아래 형태**입니다. 전역 uv를 바꾸지 않고 고정 버전을 씁니다.
+
+```sh
+cd services/<name>
+uv tool run --from uv==0.12.10 uv sync --locked
+uv tool run --from uv==0.12.10 uv run --locked pytest -q
+uv tool run --from uv==0.12.10 uv run --locked ruff check src tests
+uv tool run --from uv==0.12.10 uv run --locked ruff format --check src tests
+uv tool run --from uv==0.12.10 uv run --locked ty check
+uv tool run --from uv==0.12.10 uv run --locked python -m <pkg>.run
+```
+
+금지 사항과 그 이유:
+
+- **다른 서비스의 `.venv` 바이너리를 직접 호출하지 않습니다**
+  (`../chat/.venv/bin/python …`). 선언한 의존성과 실제 실행 환경이 갈라지고,
+  그 서비스의 lock을 바꾸면 조용히 깨집니다.
+- **`PYTHONPATH`로 경로를 밀어넣지 않습니다.** `PYTHONPATH=src:tests`는
+  `src/`가 `tests/`를 import하는 역방향 의존을 가립니다 — 실제로 catalog-hub의
+  측정 도구가 `tests/oracle.py`를 import하고 있었고 `ty check`로 드러났습니다.
+  시험과 구현이 함께 쓰는 헬퍼는 `src/` 안으로 옮깁니다.
+- **lock 없이 검증 결과를 보고하지 않습니다.** `--locked` 없이 통과한 결과는
+  재현을 보장하지 않습니다.
+
+의존성 추가·갱신은 공식 명령(`uv add`, `uv lock`)을 쓰고 수동으로 lock을 편집하지
+않습니다. 참조 구현은 [backend-template의 uv 프로젝트](../external/backend-template/python/fastapi/README.md)입니다.
+
 ## HTTP 표현과 업무 조합
 
 - HTTP API는 MVC 역할 분리를 적용합니다. Router/Controller는 단일 업무 진입점을 호출하고 JSON 표현은 Response DTO·직렬화가, 화면은 FE가 소유합니다. 이름이 같은 클래스 계층을 강제하지 않습니다.

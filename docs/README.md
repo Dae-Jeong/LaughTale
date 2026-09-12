@@ -1,6 +1,6 @@
 # Project Documents
 
-이 디렉터리는 관리자가 승인한 프로젝트 규칙과 구현·검증을 마친 현재 시스템 기준을 보관합니다. 제안, 작업 체크리스트, 대화 정리는 `docs/`에 두지 않습니다.
+이 디렉터리는 관리자가 승인한 프로젝트 규칙과 구현·검증을 마친 현재 시스템 기준을 보관합니다. 제안, 작업 체크리스트, 대화 정리는 `docs/`에 두지 않습니다. 아이디어와 stable task 문서의 canonical owner는 [Operations/Laughtale](/Users/marin/personal-workspace/Obsidian/Operations/Laughtale/index.md)이며 repo `.ideas/`와 `tasks/`는 그 문서의 compatibility facade입니다.
 
 개발 규칙은 승인 시 적용하지만, 문서에 규칙이 있다는 사실만으로 자동 검증이 구현되었다고
 간주하지 않습니다. 시스템 구조와 운영 사실의 승격에는 아래 구현·검증 조건을 적용합니다.
@@ -21,8 +21,8 @@ stateDiagram-v2
 
 | 위치 | 역할 | Source of truth 여부 | 종료 조건 |
 | --- | --- | --- | --- |
-| `.ideas/` | 확정 전 생각과 장기 후보 | 아니요 | 작업 범위가 확정되면 `tasks/`로 승격합니다. |
-| `tasks/` | 현재 논의·구현·검증 중인 작업 | 아니요 | 완료하면 기준만 `docs/`로 승격하고 task는 삭제합니다. |
+| `Operations/Laughtale/ideas/` (`.ideas/` facade) | 확정 전 생각과 장기 후보 | 아이디어 문서의 정본 | 작업 범위가 확정되면 named task를 만들되 모든 아이디어를 issue로 만들지 않습니다. |
+| `Operations/Laughtale/tasks/` (`tasks/` facade) | 승인·범위·구현·검증·결과 이력을 가진 named task | workflow 기록의 정본 | 완료 후에도 같은 stable ID·basename·canonical path와 승인/실패/검수 이력을 유지합니다. |
 | `docs/` | 승인된 프로젝트 규칙·검증된 운영 지식 | 예 | 규칙이 변경되거나 실제 시스템에서 제거·대체될 때 갱신합니다. |
 | `README.md` | 외부 사용자를 위한 소개와 빠른 실행 | 현재 공개 표면 | 프로젝트 사용법이 바뀔 때 갱신합니다. |
 | `AGENTS.md` | 에이전트 라우팅과 작업 규칙 | 작업 규칙의 기준 | 프로젝트 협업 규칙이 바뀔 때 갱신합니다. |
@@ -60,33 +60,33 @@ flowchart LR
 
 ## 승격 규칙
 
-`tasks/` 문서는 다음 조건을 모두 만족할 때만 `docs/`로 승격합니다.
+task에서 반복 사용할 현재 기준을 `docs/`에 반영하려면 다음 조건을 모두 만족해야 합니다. task 자체는 이동하거나 삭제하지 않습니다.
 
 1. 결정이 승인되었습니다.
 2. 실제 코드나 인프라에 반영되었습니다.
 3. 성공 기준과 핵심 장애 경로를 검증했습니다.
 4. 다음 작업에서도 반복해서 참고할 내용입니다.
 
-승격할 때 task 전체를 복사하지 않습니다. 현재 구조, 운영 명령, 제약, 변경 기준만 남기고 작업 과정과 체크리스트는 버립니다. 정확한 설정값은 코드와 manifest를 가리킵니다.
+`docs/`에는 task 전체를 복사하지 않고 현재 구조, 운영 명령, 제약, 변경 기준만 반영합니다. 작업 과정과 체크리스트는 stable task의 역사로 보존하며 정확한 설정값은 코드와 manifest를 가리킵니다.
 
 ## 재논의와 강등 규칙
 
 현재 시스템이 기존 문서대로 동작하는 동안에는 문서를 바로 강등하지 않습니다.
 
-1. `tasks/<change>.md`를 만들고 변경 이유와 성공 기준을 기록합니다.
+1. canonical `Operations/Laughtale/tasks/<change>.md`를 만들고 변경 이유와 성공 기준을 기록합니다. repo `tasks/<change>.md`는 compatibility facade입니다.
 2. 기존 `docs/` 문서는 현재 기준으로 유지하고 변경 task를 링크합니다.
 3. 변경 구현과 검증이 끝나면 기존 문서를 갱신합니다.
 4. 기존 기능이 실제로 제거되었다면 문서를 삭제합니다.
-5. 제거한 내용을 미래 후보로 보존할 가치가 있을 때만 `.ideas/`로 요약해 강등합니다.
+5. 제거한 내용을 미래 후보로 보존할 가치가 있을 때만 canonical `Operations/Laughtale/ideas/`에 요약합니다.
 
-문서 내용이 현재 구현과 이미 다르다는 사실을 발견했다면 문서 상단을 `Status: review-needed`로 표시하고 수정 task를 만듭니다. 이때 실제 코드와 runtime 상태가 운영 사실의 기준입니다.
+문서 내용이 현재 구현과 이미 다르다는 사실을 발견했다면 문서 상단을 `Status: review-needed`로 표시하고 canonical Operations 경로에 수정 task를 만듭니다. 이때 실제 코드와 runtime 상태가 운영 사실의 기준입니다.
 
 ## 중복 방지
 
 - 같은 작업에 `SPEC-*`, `plan.md`, `todo.md`를 따로 만들지 않습니다.
-- 활성 작업 하나당 이름이 있는 `tasks/<work>.md` 하나만 사용합니다.
+- 활성 작업 하나당 이름이 있는 canonical `Operations/Laughtale/tasks/<work>.md` 하나만 사용하고 repo facade를 두 번째 owner로 편집하지 않습니다.
 - 설명용 그래프는 해당 task나 canonical document 안에 둡니다.
-- 완료된 task를 보관하기 위한 `archive/`는 만들지 않습니다. 과거 작업은 Git 이력을 사용합니다.
+- 완료된 task를 `archive/`로 옮기거나 삭제하지 않습니다. 같은 stable task path가 본문 이력을 보존하며 Git 이력만을 유일한 기록으로 삼지 않습니다.
 - `docs/` 파일이 세 개를 넘기기 전에는 하위 분류 디렉터리를 만들지 않습니다.
 
 ## 작업별 읽기
@@ -102,6 +102,7 @@ Laughtale은 제품·서비스 계약과 인프라·배포·통합 운영 결정
 | 업무·Domain·DB·외부 연계·검증 | [공통 개발 원칙](../external/backend-template/design/engineering.md) |
 | DI·초기화·종료·정합성·DB 확장 | [Backend 공통 설계](../external/backend-template/design/backend.md) |
 | HTTP·API 변환, DB·외부 연계의 기존 세부 선택 | [서비스 계약 보완](service-contracts.md)의 해당 절 |
+| 새 Python 서비스 환경·실행 명령 (uv) | [서비스 계약 보완 · Python 서비스 환경과 실행](service-contracts.md#python-서비스-환경과-실행-하네스) |
 | 로그·계측·수집 안전·경보 판단 | [관측](../external/backend-template/design/observability.md) |
 | 부하·GIL·GC·worker·용량·월 비용 | [Runtime Review](../external/backend-template/design/runtime-review.md) |
 | 언어별 구현·테스트 | [구현별 안내](../external/backend-template/design/implementations/README.md)에서 대상 기술만 선택합니다. |
@@ -117,7 +118,7 @@ flowchart TB
 ```
 
 계측 도구 설치·배포·자동 확장은 해당 task에서 별도로 승인·검증합니다. 공통 계측 기준이 있다는 이유로
-인프라를 설치하지 않습니다. 성능 시험의 환경·임계치·원시 결과·비용 가정은 해당 `tasks/<work>.md`에 남기고
+인프라를 설치하지 않습니다. 성능 시험의 환경·임계치·원시 결과·비용 가정은 해당 canonical `Operations/Laughtale/tasks/<work>.md`에 남기고
 반복 사용할 운영 사실만 이 문서의 생명주기에 따라 승격합니다. 아직 없는 운영 문서 폴더를 미리 만들지 않습니다.
 
 ## 공통 기준 버전과 변경

@@ -1,0 +1,9 @@
+# Step 3 관측 도구 — release 전파·rolling update 구간을 봅니다.
+# oracle(전환 발생)이 asyncpg를 쓰므로 함께 설치합니다.
+FROM python:3.14-slim
+WORKDIR /app
+RUN pip install --no-cache-dir "httpx2>=2.12.0" "asyncpg>=0.31.0"
+COPY src/catalog_hub /app/catalog_hub
+COPY tests /app/tests
+ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "-m", "catalog_hub.tools.podwatch"]

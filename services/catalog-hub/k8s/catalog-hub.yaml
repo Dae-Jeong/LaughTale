@@ -1,0 +1,115 @@
+# Step 3 실험 전용 워크로드 (namespace: catalog-hub-lab).
+#
+# 기존 네임스페이스·워크로드를 건드리지 않습니다. 원본 DB는 5433 thready-postgres의
+# 합성 DB `catalog_hub_lab`이며, k3d 노드를 backend_default에 연결해 도달합니다
+# (실험 후 disconnect로 원복).
+#
+# D2: 컨테이너당 워커 1개입니다. 다중화는 워커가 아니라 replica로 합니다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-hub
+  namespace: catalog-hub-lab
+spec:
+  selector:
+    app: catalog-hub
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+# 원본 DB(호스트 5433)를 클러스터 안에서 이름으로 가리킵니다.
+# EndpointSlice를 수동 관리하는 방식은 기존 chat-primary와 같은 패턴입니다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-origin-db
+  namespace: catalog-hub-lab
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: catalog-origin-db-manual
+  namespace: catalog-hub-lab
+  labels:
+    kubernetes.io/service-name: catalog-origin-db
+addressType: IPv4
+ports:
+  - name: postgres
+    port: 5432
+    protocol: TCP
+endpoints:
+  - addresses:
+      - "172.18.0.2"
+    conditions:
+      ready: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-hub
+  namespace: catalog-hub-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-hub
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # 교체 중 구·신 Pod 공존 구간을 관측하기 위해 한 번에 하나씩 바꿉니다.
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: catalog-hub
+    spec:
+      containers:
+        - name: catalog-hub
+          image: catalog-hub:step3-v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            # Pod 이름을 응답 헤더에 실어 인스턴스를 구분합니다.
+            - name: INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DB_URL
+              value: postgresql+asyncpg://thready:thready@catalog-origin-db:5432/catalog_hub_lab
+            - name: RESPONSE_CACHE_ENABLED
+              value: "true"
+            - name: STAGE_TIMING_ENABLED
+              value: "false"
+            - name: SERVER_HOST
+              value: 0.0.0.0
+            - name: SERVER_PORT
+              value: "8000"
+            - name: DB_POOL_SIZE
+              value: "5"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              # D3 중단 임계와 맞춥니다 (Pod당 250 MiB).
+              memory: 250Mi
