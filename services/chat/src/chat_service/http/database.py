@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
@@ -14,5 +16,8 @@ async def database_unavailable(request: Request, exc: Exception) -> JSONResponse
     else:
         raise exc
     return problem_response(
-        request, status=503, code=code, headers={"Retry-After": "1"}
+        request,
+        status=HTTPStatus.SERVICE_UNAVAILABLE,
+        code=code,
+        headers={"Retry-After": "1"},
     )

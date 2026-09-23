@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat · 실제 HTTP 부하</title>
+<style>
+body{margin:0;background:#111820;color:#edf2f7;font:16px system-ui,sans-serif}main{max-width:1800px;margin:auto;padding:34px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #46505d}h1{font-size:26px;font-weight:600}p{color:#aebdcd;line-height:1.6}#state{color:#ffcc77}#metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;margin:28px 0}article{border-bottom:1px solid #46505d;padding:8px 0 16px}article strong{display:block;font-size:28px;font-weight:500}article span{font-size:13px;color:#aebdcd}svg{width:100%;height:auto;background:#17212d}section{margin:12px 0}.graphs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px}.graphs section{min-width:0}.graphs h2{margin:8px 0}.graphs .legend{margin:6px 0;font-size:13px}.graphs svg{max-height:220px}#infra{font-size:13px}#verification{padding:12px 0;border-bottom:1px solid #46505d;white-space:pre-wrap}h2{font-size:17px;font-weight:500}.legend{display:flex;gap:24px}.blue{color:#63cfff}.yellow{color:#ffd27d}code{word-break:break-all;color:#c1cbd7}#stale{color:#ffad9f}footer{border-top:1px solid #46505d;font-size:13px} @media(max-width:900px){.graphs{grid-template-columns:1fr}#metrics{grid-template-columns:repeat(3,1fr)}main{padding:18px}}
+</style><main>
+<header><h1>Chat / 실제 HTTP 부하</h1><span id="state">실행 대기</span></header>
+<p>단일 DM · 5 → 20 → 50 → 100 요청/초 · 단계별 15초 · 동시 요청 최대 32개</p>
+<div id="stale" role="status">실측 데이터를 기다립니다.</div><div id="metrics"></div>
+<div id="verification">DB·Kafka 대사 결과를 기다립니다.</div><div class="graphs"><section><h2>요청률 <small>(요청/초 · 실제 관측 구간)</small></h2><p class="legend"><span class="blue">제공한 요청</span><span class="yellow">실제로 시작한 요청</span></p><svg id="rate" viewBox="0 0 1000 220" aria-label="실시간 요청률"></svg></section>
+<section><h2>201 저장 ACK 완료율 <small>(건/초 · 계약 검증 완료)</small></h2><svg id="ack" viewBox="0 0 1000 220" aria-label="실제 저장 ACK 완료율"></svg></section>
+<section><h2>응답 지연 <small>(ms · 실행 누적 p95 / p99, 타임아웃 포함)</small></h2><p class="legend"><span class="blue">p95</span><span class="yellow">p99</span></p><svg id="latency" viewBox="0 0 1000 220" aria-label="누적 응답 지연"></svg></section>
+
+<section><h2>Outbox · 전체 누적 (이번 실행 전용 아님)</h2><p class="legend"><span class="blue">Pending</span><span class="yellow">Published</span></p><svg id="outbox" viewBox="0 0 1000 220" aria-label="누적 Outbox 변화"></svg></section>
+</div><p id="infra">자원 관측을 기다립니다.</p><p id="run"></p><footer><p>성공 수는 HTTP stored ACK입니다. DB 저장·Outbox·Kafka 대사는 별도의 검증이며, 이 화면만으로 전달 보장을 판정하지 않습니다. 과거 실행 재생이나 가상 트래픽을 표시하지 않습니다.</p></footer></main><script>
+const $=id=>document.getElementById(id);let last=null;
+function plot(id,samples,keys){const svg=$(id);svg.replaceChildren();const NS='http://www.w3.org/2000/svg',maxX=Math.max(60,...samples.map(s=>s.elapsed_seconds)),maxY=Math.max(1,...samples.flatMap(s=>keys.map(k=>s[k]??0)));function element(name,attrs,text){const e=document.createElementNS(NS,name);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(text)e.textContent=text;svg.append(e);return e;}[0,.5,1].forEach(f=>{const y=185-f*155;element('line',{x1:55,y1:y,x2:980,y2:y,stroke:'#344556'});element('text',{x:4,y:y+5,fill:'#aebdcd','font-size':13},(f*maxY).toFixed(0));});element('text',{x:55,y:210,fill:'#aebdcd','font-size':13},'0초');element('text',{x:920,y:210,fill:'#aebdcd','font-size':13},maxX.toFixed(0)+'초');keys.forEach((key,i)=>{const points=samples.filter(s=>s[key]!==null&&Number.isFinite(s[key])).map(s=>`${55+s.elapsed_seconds/maxX*925},${185-s[key]/maxY*155}`).join(' ');element('polyline',{points,fill:'none',stroke:['#63cfff','#ffd27d'][i],'stroke-width':2});});}
+function show(data){last=data;$('state').textContent={preflight:'접속 확인',running:'실제 요청 전송 중',draining:'응답 대기',complete:'관측 종료',stopped:'중단됨'}[data.status]??'알 수 없는 상태';$('metrics').replaceChildren();for(const[label,value]of [['제공 / 예정',`${data.offered} / ${data.planned}`],['실제 시도',data.attempted],['201 저장 ACK',data.created_201],['200 재전송 ACK',data.replayed_200],['명시적 거절',data.error],['결과 불명',data.unknown],['현재 요청',data.inflight],['발생기 상한 · 미전송',data.dropped],['미시도 전체',data.not_attempted],['p95 (ms)',data.p95_ms?.toFixed(1)??'—'],['p99 (ms)',data.p99_ms?.toFixed(1)??'—'],['스케줄 지연 p95',data.scheduler_lag_p95_ms?.toFixed(1)??'—']]){const a=document.createElement('article'),v=document.createElement('strong'),l=document.createElement('span');v.textContent=value;l.textContent=label;a.append(v,l);$('metrics').append(a);}plot('rate',data.samples,['offered_rps','attempted_rps']);plot('latency',data.samples,['p95_ms','p99_ms']);$('run').textContent=`실행 ${data.run_id} · 마지막 기록 ${data.updated_at}${data.stop_reason?' · '+data.stop_reason:''}`;}
+function freshness(failed=false){const finished=last&&['complete','stopped'].includes(last.status),age=last?(Date.now()-Date.parse(last.updated_at))/1000:Infinity;$('stale').textContent=!last?'실행 대기 — 아직 관측값이 없습니다.':failed?'갱신 실패 — 마지막 관측값입니다.':finished?'실행이 종료된 최종 관측값입니다.':age>3.5?'STALE — 3.5초 이상 새 관측값이 없습니다.':'LIVE · 1초 간격 실측';}
+async function poll(){let failed=false;try{const response=await fetch('/live/status.json',{cache:'no-store'});if(!response.ok)throw Error();show(await response.json());plot('ack',last.samples,['created_rps']);}catch{failed=true;}freshness(failed);setTimeout(poll,1000);}poll();
+let infraSamples=[];
+async function infraPoll(){
+ try {
+  const response=await fetch('/resources.jsonl',{cache:'no-store'});if(!response.ok)throw Error();
+  const lines=(await response.text()).split('\n'),rows=[];
+  for(let i=0;i<lines.length;i++){if(!lines[i].trim())continue;try{rows.push(JSON.parse(lines[i]));}catch{if(i!==lines.length-1)throw Error();}}
+  const observed=rows.filter(d=>d.outbox&&Number.isFinite(Date.parse(d.sampled_at)));
+  if(!observed.length)throw Error();
+  const start=Date.parse(observed[0].sampled_at),d=observed.at(-1),latest=rows.at(-1);
+  infraSamples=observed.map(d=>({elapsed_seconds:(Date.parse(d.sampled_at)-start)/1000,pending:d.outbox.pending,published:d.outbox.published}));
+  const stale=Date.now()-Date.parse(latest.sampled_at)>12000?' · 관측 종료 또는 STALE':'';
+  $('infra').textContent=`${latest.status}${stale} · Pending ${d.outbox.pending} · Published ${d.outbox.published} · 가장 오래된 미발행 ${d.outbox.oldest_pending_seconds??'—'}초 · 호스트 free ${d.host_free_percent}% · Kafka 볼륨 ${d.kafka_volume_kib} KiB · ${d.containers.map(c=>`${c.name}: CPU ${c.cpu_percent}%, memory ${c.memory_percent}%`).join(' / ')}${latest.reason?' · '+latest.reason:''}`;
+  plot('outbox',infraSamples,['pending','published']);
+ }catch{$('infra').textContent=infraSamples.length?'자원 갱신 실패 — 마지막 관측값입니다.':'자원 관측 기록을 기다립니다.';}
+ setTimeout(infraPoll,5000);
+}infraPoll();
+async function verificationPoll(){
+ try{const response=await fetch('/verification.json',{cache:'no-store'});if(!response.ok)throw Error();const d=await response.json(),c=d.counts??{},match=Number.isInteger(c.acknowledged_intents)&&c.acknowledged_intents>0&&['stored_messages','outbox_rows','published_outbox_rows','relevant_kafka_records'].every(k=>c[k]===c.acknowledged_intents)&&Object.keys(d.issues??{}).length===0;const headline=match?`저장 ACK 대사 일치 (${c.acknowledged_intents}건) · ${d.status==='incomplete'?'전체 부하 목표 미달/검증 미완료'+(last?.not_attempted?' (발생기 미전송 '+last.not_attempted+'건)':''):d.status}`:`DB·Kafka 대사: ${d.status??'상태 없음'}`;$('verification').textContent=`${headline} · ${JSON.stringify(d.counts??{})}\n범위: ${JSON.stringify(d.scope??{})}${Object.keys(d.issues??{}).length?'\n확인 사항: '+JSON.stringify(d.issues):''}`;}
+ catch{$('verification').textContent='DB·Kafka 대사 결과 관측 대기 — 아직 검증 결과를 확인할 수 없습니다.';}
+ setTimeout(verificationPoll,5000);
+}verificationPoll();
+</script></html>

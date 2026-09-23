@@ -1,0 +1,21 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "conversation_id": {
+      "format": "uuid",
+      "title": "Conversation Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "subscribe",
+      "default": "subscribe",
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "conversation_id"
+  ],
+  "title": "Subscribe",
+  "type": "object"
+}

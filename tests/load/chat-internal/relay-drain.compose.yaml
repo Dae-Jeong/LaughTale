@@ -1,0 +1,21 @@
+name: laughtale-relay-drain
+services:
+  runner:
+    image: ${RELAY_DRAIN_IMAGE:?required}
+    container_name: laughtale-relay-drain-runner
+    cpus: 0.2
+    mem_limit: 192m
+    memswap_limit: 192m
+    restart: "no"
+    entrypoint: ["/app/.venv/bin/python", "/bench/relay_drain.py"]
+    env_file: ../../../services/chat/.env.test
+    environment:
+      RELAY_DRAIN_VARIANT: ${RELAY_DRAIN_VARIANT:?required}
+    volumes:
+      - ./relay_drain.py:/bench/relay_drain.py:ro
+      - ../../../.artifacts:/results
+    networks: [lab]
+networks:
+  lab:
+    external: true
+    name: laughtale-postgres-lab_default

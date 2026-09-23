@@ -1,0 +1,6 @@
+**
+!infra
+!infra/postgres
+!infra/postgres/init.sql
+!infra/postgres/pg_hba.conf
+!infra/postgres/replica.sh

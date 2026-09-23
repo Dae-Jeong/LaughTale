@@ -1,0 +1,77 @@
+# E1 lab fixture only. Source ConfigMap and dedicated Secret are created separately.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-growth-proxy
+  namespace: laughtale-chat-external
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: chat-growth-proxy}
+  template:
+    metadata:
+      labels: {app: chat-growth-proxy}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: proxy
+          image: laughtale-chat:external-lab-v8
+          imagePullPolicy: Never
+          command: [python, /opt/lab/lab_proxy.py]
+          envFrom:
+            - secretRef: {name: chat-growth-env}
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: source, mountPath: /opt/lab, readOnly: true}
+          readinessProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18096/health/ready', timeout=1).close()"]
+            periodSeconds: 3
+            timeoutSeconds: 2
+      volumes:
+        - name: source
+          configMap: {name: chat-growth-proxy-source}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: growth-proxy-egress
+  namespace: laughtale-chat-external
+spec:
+  podSelector:
+    matchLabels: {app: chat-growth-proxy}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app: chat}
+      ports: [{protocol: TCP, port: 18082}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: chat-from-growth-proxy
+  namespace: laughtale-chat-external
+spec:
+  podSelector:
+    matchLabels: {app: chat}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: chat-growth-proxy}
+      ports: [{protocol: TCP, port: 18082}]

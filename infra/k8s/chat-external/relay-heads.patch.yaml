@@ -1,0 +1,7 @@
+# Opt-in local deployment, not included in the default kustomization.
+spec:
+  template:
+    spec:
+      containers:
+        - name: relay
+          image: laughtale-chat:relay-heads-isolated-v1

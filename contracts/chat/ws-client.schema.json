@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "Subscribe": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "format": "uuid",
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "subscribe",
+          "default": "subscribe",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "title": "Subscribe",
+      "type": "object"
+    },
+    "Unsubscribe": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "format": "uuid",
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "unsubscribe",
+          "default": "unsubscribe",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "title": "Unsubscribe",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "subscribe": "#/$defs/Subscribe",
+      "unsubscribe": "#/$defs/Unsubscribe"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Subscribe"
+    },
+    {
+      "$ref": "#/$defs/Unsubscribe"
+    }
+  ]
+}

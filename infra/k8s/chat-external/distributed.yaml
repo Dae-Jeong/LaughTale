@@ -1,0 +1,159 @@
+# Apply explicitly after image import and secret creation; scale one component at a time.
+# Redis Docker IP must be checked before each application.
+apiVersion: v1
+kind: Service
+metadata: {name: redis, namespace: laughtale-chat-external}
+spec:
+  ports: [{name: redis, port: 6379, targetPort: 6379}]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: redis-compose
+  namespace: laughtale-chat-external
+  labels:
+    kubernetes.io/service-name: redis
+    endpointslice.kubernetes.io/managed-by: laughtale-lab
+addressType: IPv4
+ports: [{name: redis, protocol: TCP, port: 6379}]
+endpoints:
+  - addresses: [172.22.0.6]
+    conditions: {ready: true}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: gateway-dependencies, namespace: laughtale-chat-external}
+spec:
+  podSelector: {matchLabels: {app: chat-gateway}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: chat-fanout}}}]
+      ports: [{protocol: TCP, port: 18082}]
+  egress:
+    - to: [{ipBlock: {cidr: 172.22.0.2/32}}]
+      ports: [{protocol: TCP, port: 5432}]
+    - to: [{ipBlock: {cidr: 172.22.0.6/32}}]
+      ports: [{protocol: TCP, port: 6379}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: fanout-dependencies, namespace: laughtale-chat-external}
+spec:
+  podSelector: {matchLabels: {app: chat-fanout}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 172.22.0.5/32}}]
+      ports: [{protocol: TCP, port: 9092}]
+    - to: [{ipBlock: {cidr: 172.22.0.6/32}}]
+      ports: [{protocol: TCP, port: 6379}]
+    - to: [{podSelector: {matchLabels: {app: chat-gateway}}}]
+      ports: [{protocol: TCP, port: 18082}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: chat-gateway, namespace: laughtale-chat-external}
+spec:
+  replicas: 0
+  revisionHistoryLimit: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector: {matchLabels: {app: chat-gateway}}
+  template:
+    metadata: {labels: {app: chat-gateway}}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: gateway
+          image: laughtale-chat:external-lab-v6
+          imagePullPolicy: Never
+          command: [python, -m, chat_service.gateway]
+          envFrom:
+            - secretRef: {name: chat-realtime-env}
+          env:
+            - {name: NETWORK_PROFILE, value: isolated-lab}
+            - {name: APP_ENVIRONMENT, value: isolated-lab}
+            - {name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092"}
+            - {name: SERVER_HOST, value: "0.0.0.0"}
+            - {name: SERVER_PORT, value: "18082"}
+            - {name: DEV_SESSIONS_ENABLED, value: "true"}
+            - {name: SESSION_BACKEND, value: postgres}
+            - {name: DB_POOL_SIZE, value: "2"}
+            - {name: DB_POOL_MAX_OVERFLOW, value: "0"}
+            - name: GATEWAY_IP
+              valueFrom: {fieldRef: {fieldPath: status.podIP}}
+            - name: DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef: {name: chat-lab-env, key: DB_PRIMARY_URL}
+          ports: [{name: http, containerPort: 18082}]
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+          startupProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: chat-fanout, namespace: laughtale-chat-external}
+spec:
+  replicas: 0
+  revisionHistoryLimit: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector: {matchLabels: {app: chat-fanout}}
+  template:
+    metadata: {labels: {app: chat-fanout}}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: fanout
+          image: laughtale-chat:external-lab-v9
+          imagePullPolicy: Never
+          command: [python, -m, chat_service.fanout]
+          envFrom:
+            - secretRef: {name: chat-realtime-env}
+          env:
+            - {name: NETWORK_PROFILE, value: isolated-lab}
+            - {name: APP_ENVIRONMENT, value: isolated-lab}
+            - {name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092"}
+            - name: LAB_POD_UID
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}

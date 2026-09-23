@@ -1,0 +1,353 @@
+{
+  "AcceptedEffect": {
+    "additionalProperties": false,
+    "properties": {
+      "effect_id": {
+        "format": "uuid",
+        "title": "Effect Id",
+        "type": "string"
+      },
+      "outbound_operation_id": {
+        "format": "uuid",
+        "title": "Outbound Operation Id",
+        "type": "string"
+      },
+      "state": {
+        "const": "accepted",
+        "default": "accepted",
+        "title": "State",
+        "type": "string"
+      }
+    },
+    "required": [
+      "effect_id",
+      "outbound_operation_id"
+    ],
+    "title": "AcceptedEffect",
+    "type": "object"
+  },
+  "ConnectionSeed": {
+    "$defs": {
+      "Profile": {
+        "enum": [
+          "telegram",
+          "line",
+          "instagram",
+          "facebook",
+          "whatsapp",
+          "wechat",
+          "kakao-bizgo"
+        ],
+        "title": "Profile",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "description": "합성 연결의 명시적 준비 입력입니다.",
+    "properties": {
+      "connection_id": {
+        "format": "uuid",
+        "title": "Connection Id",
+        "type": "string"
+      },
+      "external_conversation_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Conversation Id",
+        "type": "string"
+      },
+      "external_sender_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Sender Id",
+        "type": "string"
+      },
+      "idempotency_supported": {
+        "default": true,
+        "title": "Idempotency Supported",
+        "type": "boolean"
+      },
+      "lookup_supported": {
+        "default": true,
+        "title": "Lookup Supported",
+        "type": "boolean"
+      },
+      "operator_user_id": {
+        "format": "uuid",
+        "title": "Operator User Id",
+        "type": "string"
+      },
+      "profile": {
+        "$ref": "#/$defs/Profile"
+      },
+      "run_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "Run Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "run_id",
+      "profile",
+      "connection_id",
+      "external_conversation_id",
+      "external_sender_id",
+      "operator_user_id"
+    ],
+    "title": "ConnectionSeed",
+    "type": "object"
+  },
+  "InboundEvent": {
+    "$defs": {
+      "Profile": {
+        "enum": [
+          "telegram",
+          "line",
+          "instagram",
+          "facebook",
+          "whatsapp",
+          "wechat",
+          "kakao-bizgo"
+        ],
+        "title": "Profile",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "connection_id": {
+        "format": "uuid",
+        "title": "Connection Id",
+        "type": "string"
+      },
+      "external_conversation_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Conversation Id",
+        "type": "string"
+      },
+      "external_event_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Event Id",
+        "type": "string"
+      },
+      "external_message_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Message Id",
+        "type": "string"
+      },
+      "external_sender_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Sender Id",
+        "type": "string"
+      },
+      "occurred_at": {
+        "format": "date-time",
+        "title": "Occurred At",
+        "type": "string"
+      },
+      "profile": {
+        "$ref": "#/$defs/Profile"
+      },
+      "run_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "text": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "run_id",
+      "profile",
+      "connection_id",
+      "external_conversation_id",
+      "external_event_id",
+      "external_message_id",
+      "external_sender_id",
+      "occurred_at",
+      "text"
+    ],
+    "title": "InboundEvent",
+    "type": "object"
+  },
+  "OutboundCommand": {
+    "$defs": {
+      "Profile": {
+        "enum": [
+          "telegram",
+          "line",
+          "instagram",
+          "facebook",
+          "whatsapp",
+          "wechat",
+          "kakao-bizgo"
+        ],
+        "title": "Profile",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "connection_id": {
+        "format": "uuid",
+        "title": "Connection Id",
+        "type": "string"
+      },
+      "external_conversation_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "External Conversation Id",
+        "type": "string"
+      },
+      "outbound_operation_id": {
+        "format": "uuid",
+        "title": "Outbound Operation Id",
+        "type": "string"
+      },
+      "profile": {
+        "$ref": "#/$defs/Profile"
+      },
+      "run_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "text": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "run_id",
+      "profile",
+      "connection_id",
+      "external_conversation_id",
+      "outbound_operation_id",
+      "text"
+    ],
+    "title": "OutboundCommand",
+    "type": "object"
+  },
+  "RunConfig": {
+    "$defs": {
+      "Fault": {
+        "enum": [
+          "none",
+          "rate_limit",
+          "unavailable",
+          "delay_before",
+          "delay_after",
+          "reject"
+        ],
+        "title": "Fault",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "delay_seconds": {
+        "default": 3,
+        "maximum": 10,
+        "minimum": 0,
+        "title": "Delay Seconds",
+        "type": "number"
+      },
+      "fault": {
+        "$ref": "#/$defs/Fault",
+        "default": "none"
+      },
+      "fault_attempts": {
+        "default": 1,
+        "maximum": 5,
+        "minimum": 0,
+        "title": "Fault Attempts",
+        "type": "integer"
+      },
+      "idempotency_supported": {
+        "default": true,
+        "title": "Idempotency Supported",
+        "type": "boolean"
+      },
+      "lookup_supported": {
+        "default": true,
+        "title": "Lookup Supported",
+        "type": "boolean"
+      },
+      "max_attempts": {
+        "default": 5000,
+        "maximum": 50000,
+        "minimum": 1,
+        "title": "Max Attempts",
+        "type": "integer"
+      },
+      "max_effects": {
+        "default": 1000,
+        "maximum": 10000,
+        "minimum": 1,
+        "title": "Max Effects",
+        "type": "integer"
+      },
+      "max_events": {
+        "default": 1000,
+        "maximum": 10000,
+        "minimum": 1,
+        "title": "Max Events",
+        "type": "integer"
+      },
+      "run_id": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "seed": {
+        "default": 0,
+        "maximum": 2147483647,
+        "minimum": 0,
+        "title": "Seed",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "run_id"
+    ],
+    "title": "RunConfig",
+    "type": "object"
+  }
+}

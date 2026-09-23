@@ -1,0 +1,23 @@
+# Dedicated external-disk lab. Always supply its isolated LIMA_HOME.
+minimumLimaVersion: 2.2.0
+base:
+  - template:docker-rootful
+vmType: vz
+arch: aarch64
+cpus: 4
+memory: 8GiB
+disk: 1250GiB
+mounts: []
+ssh:
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+portForwards:
+  - guestPort: 26447
+    hostPort: 26447
+    hostIP: 127.0.0.1
+  # The base template already forwards Docker's Unix socket.
+  - guestPortRange: [1, 65535]
+    guestIP: 0.0.0.0
+    guestIPMustBeZero: false
+    proto: any
+    ignore: true

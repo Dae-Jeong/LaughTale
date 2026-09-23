@@ -1,0 +1,42 @@
+from enum import StrEnum
+
+
+class MockError(StrEnum):
+    INVALID_INPUT = "INVALID_INPUT"
+    REQUEST_REJECTED = "REQUEST_REJECTED"
+    RUN_ACTIVE = "RUN_ACTIVE"
+    RUN_MISMATCH = "RUN_MISMATCH"
+    RUN_NOT_FOUND = "RUN_NOT_FOUND"
+    RUN_EXISTS = "RUN_EXISTS"
+    RUN_LIMIT = "RUN_LIMIT"
+    EVENT_NOT_FOUND = "EVENT_NOT_FOUND"
+    EVENT_CONFLICT = "EVENT_CONFLICT"
+    EVENT_LIMIT = "EVENT_LIMIT"
+    CONNECTION_NOT_CONFIGURED = "CONNECTION_NOT_CONFIGURED"
+    INVALID_CURSOR = "INVALID_CURSOR"
+    INJECTED_FAILURE = "INJECTED_FAILURE"
+    LOOKUP_UNSUPPORTED = "LOOKUP_UNSUPPORTED"
+    OPERATION_NOT_FOUND = "OPERATION_NOT_FOUND"
+    OPERATION_CONFLICT = "OPERATION_CONFLICT"
+    ATTEMPT_LIMIT = "ATTEMPT_LIMIT"
+    EFFECT_LIMIT = "EFFECT_LIMIT"
+    CONCURRENCY_LIMIT = "CONCURRENCY_LIMIT"
+
+
+class InboundOutcome(StrEnum):
+    CANCELLED = "cancelled"
+    ACKNOWLEDGED = "acknowledged"
+    REJECTED = "rejected"
+    UNKNOWN = "unknown"
+
+
+class OutboundOutcome(StrEnum):
+    CANCELLED = "cancelled"
+    EFFECT_CREATED = "effect_created"
+    REPLAYED = "replayed"
+
+
+class HealthStatus(StrEnum):
+    ALIVE = "alive"
+    READY = "ready"
+    NOT_READY = "not_ready"

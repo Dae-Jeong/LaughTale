@@ -1,9 +1,17 @@
-from collections.abc import Callable
+import asyncio
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from time import monotonic
 
 from prometheus_client import Counter, Gauge, Histogram
 
-from chat_service.contracts.database import AcquisitionOutcome, TransactionOutcome
+from chat_service.contracts.database import (
+    AcquisitionOutcome,
+    AuthOutcome,
+    AuthPhase,
+    TransactionOutcome,
+)
 from chat_service.core.metrics import HttpMetrics
 
 DB_DURATION_BUCKETS = (
@@ -34,6 +42,27 @@ class DatabaseMetrics:
     timeouts: Counter
     transactions: Counter
     transaction_duration: Histogram
+    auth_duration: Histogram
+
+    @contextmanager
+    def auth_phase(self, phase: AuthPhase) -> Iterator[None]:
+        if phase not in set(AuthPhase):
+            raise ValueError("Unknown authentication DB phase")
+        started = monotonic()
+        outcome = AuthOutcome.SUCCESS
+        try:
+            yield
+        except asyncio.CancelledError:
+            outcome = AuthOutcome.CANCELLED
+            raise
+        except BaseException:
+            outcome = AuthOutcome.FAILED
+            raise
+        finally:
+            elapsed = monotonic() - started
+            self.record(
+                lambda: self.auth_duration.labels(phase, outcome).observe(elapsed)
+            )
 
     def record(self, action: Callable[[], None]) -> None:
         try:
@@ -125,4 +154,11 @@ def create_database_metrics(owner: HttpMetrics, limit: int) -> DatabaseMetrics:
         timeouts,
         transactions,
         duration,
+        Histogram(
+            "db_auth_phase_seconds",
+            "Authentication DB pool acquisition (including connect/pre-ping) and query durations; not commit.",
+            ("phase", "outcome"),
+            buckets=DB_DURATION_BUCKETS,
+            registry=owner.registry,
+        ),
     )

@@ -2,6 +2,7 @@
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "0001"
 down_revision = None
@@ -22,7 +23,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("kind", sa.Text(), nullable=False, server_default="dm"),
         sa.Column("last_seq", sa.BigInteger(), nullable=False, server_default="0"),
-        sa.CheckConstraint("kind = 'dm'", name="ck_conversations_kind"),
         sa.CheckConstraint("last_seq >= 0", name="ck_conversations_last_seq"),
         schema=schema,
     )
@@ -75,12 +75,53 @@ def upgrade() -> None:
             name="uq_messages_idempotency",
         ),
         sa.CheckConstraint("seq > 0", name="ck_messages_seq"),
-        sa.CheckConstraint(
-            "char_length(text) BETWEEN 1 AND 2000", name="ck_messages_text_length"
+        schema=schema,
+    )
+
+    op.create_table(
+        "message_outbox",
+        sa.Column(
+            "event_id",
+            sa.Uuid(),
+            sa.ForeignKey(f"{schema}.messages.id"),
+            primary_key=True,
         ),
-        sa.CheckConstraint("payload_version = 1", name="ck_messages_payload_version"),
-        sa.CheckConstraint(
-            "payload_hash ~ '^[0-9a-f]{64}$'", name="ck_messages_payload_hash"
+        sa.Column("payload", postgresql.JSONB(), nullable=False),
+        sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("claim_token", sa.Uuid(), nullable=True),
+        sa.Column("lease_until", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("attempts", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("next_attempt_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_error_code", sa.Text(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        schema=schema,
+    )
+    op.create_index(
+        "ix_message_outbox_unpublished",
+        "message_outbox",
+        ["created_at"],
+        schema=schema,
+        postgresql_where=sa.text("published_at IS NULL"),
+    )
+
+    op.create_table(
+        "shared_sessions",
+        sa.Column("token_hash", sa.String(64), primary_key=True),
+        sa.Column(
+            "actor_id", sa.Uuid(), sa.ForeignKey(f"{schema}.users.id"), nullable=False
+        ),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         schema=schema,
     )
@@ -88,5 +129,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     schema = op.get_context().opts["version_table_schema"]
-    for name in ("messages", "members", "conversations", "users"):
+    op.drop_table("shared_sessions", schema=schema)
+    for name in ("message_outbox", "messages", "members", "conversations", "users"):
         op.drop_table(name, schema=schema)

@@ -1,0 +1,10 @@
+# Opt-in strategic merge patch, not part of the default kustomization.
+# kubectl --context k3d-laughtale-local -n laughtale-chat-external patch deployment chat --type strategic --patch-file infra/k8s/chat-external/vertical-cpu.patch.yaml
+spec:
+  template:
+    spec:
+      containers:
+        - name: chat
+          resources:
+            limits:
+              cpu: "1"

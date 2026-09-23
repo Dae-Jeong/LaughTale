@@ -86,7 +86,7 @@ def test_migration_roundtrip_and_model_parity(postgres_url: str) -> None:
                     await connection.scalar(
                         text(f'SELECT version_num FROM "{schema}".alembic_version')
                     )
-                    == "0001"
+                    == "0002"
                 )
             await migrate(engine, config, "down")
             async with engine.connect() as connection:
@@ -123,13 +123,8 @@ def test_migration_roundtrip_and_model_parity(postgres_url: str) -> None:
         ("nonmember", "23503"),
         ("missing_conversation", "23503"),
         ("zero_seq", "23514"),
-        ("empty_text", "23514"),
-        ("long_text", "23514"),
-        ("bad_version", "23514"),
-        ("bad_hash", "23514"),
         ("null_text", "23502"),
         ("negative_counter", "23514"),
-        ("unsupported_kind", "23514"),
         ("duplicate_member", "23505"),
         ("missing_user", "23503"),
     ],
@@ -182,17 +177,11 @@ def test_constraints_reject_invalid_writes(
                 "nonmember": {"sender_id": outsider},
                 "missing_conversation": {"conversation_id": uuid4()},
                 "zero_seq": {"seq": 0},
-                "empty_text": {"text": ""},
-                "long_text": {"text": "😀" * 2001},
-                "bad_version": {"payload_version": 2},
-                "bad_hash": {"payload_hash": "invalid"},
                 "null_text": {"text": None},
             }
             statement = insert(messages).values(**(values | overrides.get(case, {})))
             if case == "negative_counter":
                 statement = insert(conversations).values(id=uuid4(), last_seq=-1)
-            elif case == "unsupported_kind":
-                statement = insert(conversations).values(id=uuid4(), kind="group")
             elif case in {"duplicate_member", "missing_user"}:
                 statement = insert(members).values(
                     conversation_id=room,

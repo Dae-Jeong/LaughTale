@@ -1,0 +1,97 @@
+{
+  "conversations": {
+    "data": [
+      {
+        "conversation_id": "00000000-0000-4000-8000-000000000010",
+        "head_seq": "1",
+        "kind": "dm",
+        "title": "User B"
+      }
+    ]
+  },
+  "error": {
+    "code": "UNAUTHENTICATED",
+    "type": "error"
+  },
+  "heads": {
+    "items": [
+      {
+        "conversation_id": "00000000-0000-4000-8000-000000000010",
+        "head_seq": "1"
+      }
+    ],
+    "type": "heads"
+  },
+  "history": {
+    "data": [
+      {
+        "client_message_id": "00000000-0000-4000-8000-000000000200",
+        "conversation_id": "00000000-0000-4000-8000-000000000010",
+        "created_at": "2026-09-08T00:00:00Z",
+        "message_id": "00000000-0000-4000-8000-000000000100",
+        "sender_id": "00000000-0000-4000-8000-000000000001",
+        "seq": "1",
+        "text": "안녕하세요 👋"
+      }
+    ],
+    "meta": {
+      "has_more": false,
+      "next_cursor": "1",
+      "snapshot_head_seq": "1"
+    }
+  },
+  "message_created": {
+    "event_id": "00000000-0000-4000-8000-000000000100",
+    "message": {
+      "client_message_id": "00000000-0000-4000-8000-000000000200",
+      "conversation_id": "00000000-0000-4000-8000-000000000010",
+      "created_at": "2026-09-08T00:00:00Z",
+      "message_id": "00000000-0000-4000-8000-000000000100",
+      "sender_id": "00000000-0000-4000-8000-000000000001",
+      "seq": "1",
+      "text": "안녕하세요 👋"
+    },
+    "schema_version": 1,
+    "type": "message.created"
+  },
+  "resync_required": {
+    "conversation_id": "00000000-0000-4000-8000-000000000010",
+    "reason": "queue_overflow",
+    "type": "resync_required"
+  },
+  "session": {
+    "data": {
+      "display_name": "User A",
+      "user_id": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  "session_request": {
+    "user": "user_a"
+  },
+  "stored": {
+    "data": {
+      "client_message_id": "00000000-0000-4000-8000-000000000200",
+      "conversation_id": "00000000-0000-4000-8000-000000000010",
+      "created_at": "2026-09-08T00:00:00Z",
+      "message_id": "00000000-0000-4000-8000-000000000100",
+      "sender_id": "00000000-0000-4000-8000-000000000001",
+      "seq": "1",
+      "state": "stored",
+      "text": "안녕하세요 👋"
+    }
+  },
+  "subscribe": {
+    "conversation_id": "00000000-0000-4000-8000-000000000010",
+    "type": "subscribe"
+  },
+  "subscribed": {
+    "conversation_id": "00000000-0000-4000-8000-000000000010",
+    "head_seq": "1",
+    "protocol_version": 1,
+    "type": "subscribed"
+  },
+  "unsubscribe": {
+    "conversation_id": "00000000-0000-4000-8000-000000000010",
+    "type": "unsubscribe"
+  }
+}

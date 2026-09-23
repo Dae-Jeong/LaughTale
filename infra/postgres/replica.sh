@@ -22,5 +22,6 @@ fi
 
 exec postgres -D "$PGDATA" \
     -c hba_file=/etc/postgresql/lab_hba.conf \
-    -c hot_standby=on -c shared_buffers=64MB -c max_connections=30 \
+    -c hot_standby=on -c shared_buffers="${REPLICA_SHARED_BUFFERS:-64MB}" \
+    -c max_connections="${REPLICA_MAX_CONNECTIONS:-30}" \
     -c max_wal_senders=4 -c max_replication_slots=2

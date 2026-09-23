@@ -9,6 +9,7 @@ from sqlalchemy import MetaData, pool, text
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from chat_service.models import external, sessions  # noqa: F401
 from chat_service.models.chat import metadata
 
 config = context.config

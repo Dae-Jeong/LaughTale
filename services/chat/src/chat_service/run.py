@@ -38,6 +38,9 @@ def main() -> None:
         access_log=False,
         log_config=None,
         workers=1,
+        proxy_headers=False,
+        ws="websockets-sansio",
+        ws_max_size=16384,
         timeout_graceful_shutdown=settings.shutdown_timeout_seconds,
     )
 

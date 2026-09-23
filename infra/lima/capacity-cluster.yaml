@@ -1,0 +1,23 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata: {name: laughtale-capacity}
+servers: 1
+agents: 0
+image: docker.io/rancher/k3s:v1.34.10-k3s1
+network: laughtale-capacity
+kubeAPI:
+  host: 127.0.0.1
+  hostIP: 127.0.0.1
+  hostPort: "26447"
+options:
+  k3d:
+    wait: true
+    timeout: 300s
+    disableRollback: true
+  kubeconfig:
+    updateDefaultKubeconfig: false
+    switchCurrentContext: false
+  k3s:
+    extraArgs:
+      - {arg: --disable=traefik, nodeFilters: [server:0]}
+      - {arg: --disable=servicelb, nodeFilters: [server:0]}

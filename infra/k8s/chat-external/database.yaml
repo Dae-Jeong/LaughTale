@@ -1,0 +1,41 @@
+# Observed 2026-09-08. Re-inspect exact lab container IPs before applying.
+# Node must first be connected to laughtale-postgres-lab_default by root.
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-primary
+spec:
+  ports: [{name: postgres, port: 5432, targetPort: 5432}]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: chat-primary-lab
+  labels:
+    kubernetes.io/service-name: chat-primary
+    endpointslice.kubernetes.io/managed-by: laughtale-lab-manual
+addressType: IPv4
+ports: [{name: postgres, protocol: TCP, port: 5432}]
+endpoints:
+  - addresses: ["172.22.0.2"]
+    conditions: {ready: true}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-replica
+spec:
+  ports: [{name: postgres, port: 5432, targetPort: 5432}]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: chat-replica-lab
+  labels:
+    kubernetes.io/service-name: chat-replica
+    endpointslice.kubernetes.io/managed-by: laughtale-lab-manual
+addressType: IPv4
+ports: [{name: postgres, protocol: TCP, port: 5432}]
+endpoints:
+  - addresses: ["172.22.0.3"]
+    conditions: {ready: true}

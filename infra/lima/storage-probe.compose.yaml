@@ -1,0 +1,28 @@
+# Disposable verification container; named volume is intentionally retained.
+name: laughtale-capacity-probe
+services:
+  storage-probe:
+    image: busybox:1.37.0
+    network_mode: none
+    read_only: true
+    mem_limit: 32m
+    cpus: 0.25
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - evidence:/evidence
+    command:
+      - sh
+      - -ec
+      - |
+        if [ ! -f /evidence/SHA256SUMS ]; then
+          dd if=/dev/urandom of=/evidence/probe.bin bs=1048576 count=1
+          cd /evidence
+          sha256sum probe.bin > SHA256SUMS
+          sync
+        fi
+        cd /evidence
+        sha256sum -c SHA256SUMS
+        cat SHA256SUMS
+volumes:
+  evidence:

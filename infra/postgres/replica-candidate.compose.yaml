@@ -1,0 +1,33 @@
+# E4b opt-in overlay: 기존 Primary/Replica 및 volume을 변경하지 않습니다.
+# root가 5442 점유·빈 신규 volume·디스크/메모리 예산을 검증한 뒤에만 실행합니다.
+services:
+  replica-candidate:
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    profiles: [replica-growth]
+    cpus: 0.5
+    mem_limit: 256m
+    shm_size: 64m
+    stop_grace_period: 30s
+    restart: "no"
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PGPASSWORD: ${REPLICATION_PASSWORD:?Set local .env}
+    ports:
+      - "127.0.0.1:5442:5432"
+    volumes:
+      - replica-candidate-data:/var/lib/postgresql/data
+      - ./replica-candidate.sh:/opt/lab/replica-candidate.sh:ro
+      - ./pg_hba.conf:/etc/postgresql/lab_hba.conf:ro
+    entrypoint: [sh, /opt/lab/replica-candidate.sh]
+    healthcheck:
+      test: [CMD-SHELL, "psql -U postgres -d laughtale_chat -Atqc 'SELECT pg_is_in_recovery()' | grep -qx t"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+volumes:
+  replica-candidate-data:

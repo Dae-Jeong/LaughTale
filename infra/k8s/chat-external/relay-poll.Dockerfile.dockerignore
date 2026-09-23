@@ -1,0 +1,6 @@
+**
+!services/
+!services/chat/
+!services/chat/src/
+!services/chat/src/chat_service/
+!services/chat/src/chat_service/relay.py

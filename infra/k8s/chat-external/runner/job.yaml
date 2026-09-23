@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: g4-traffic
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 60
+  template:
+    metadata:
+      labels: {app: traffic-generator}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: traffic-generator
+          image: laughtale-platform-mock:external-lab-v1
+          imagePullPolicy: Never
+          command: [python, /runner/run.py]
+          # Root must set fresh run/phase IDs and matching seven connection credentials.
+          args: [--run-id, g4-local-first, --phase, baseline, --events, "70", --rate, "5", --duration, "30"]
+          env:
+            - name: G4_CONNECTION_CREDENTIALS
+              valueFrom:
+                secretKeyRef: {name: chat-lab-env, key: EXTERNAL_CONNECTION_CREDENTIALS}
+            - name: G4_CONTROL_TOKEN
+              valueFrom:
+                secretKeyRef: {name: chat-lab-env, key: EXTERNAL_CONTROL_TOKEN}
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: runner, mountPath: /runner, readOnly: true}
+            - {name: artifacts, mountPath: /artifacts}
+      volumes:
+        - name: runner
+          configMap: {name: g4-runner}
+        - name: artifacts
+          emptyDir: {sizeLimit: 8Mi}

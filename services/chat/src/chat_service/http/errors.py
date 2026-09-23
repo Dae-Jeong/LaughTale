@@ -23,7 +23,15 @@ FIELD_CODES = {
 }
 
 # 현재 공개 입력 계약입니다. 새 입력 추가 시 승인한 필드 경로만 확장합니다.
-PUBLIC_LOCATIONS: set[tuple[str, ...]] = set()
+PUBLIC_LOCATIONS: set[tuple[str, ...]] = {
+    ("body", "user"),
+    ("body", "text"),
+    ("body", "client_message_id"),
+    ("path", "conversation_id"),
+    ("query", "after_seq"),
+    ("query", "snapshot_head_seq"),
+    ("query", "limit"),
+}
 
 
 def problem_response(
@@ -89,23 +97,32 @@ async def validation_error(request: Request, exc: Exception) -> JSONResponse:
             )
         )
     return problem_response(
-        request, status=422, code=ErrorCode.INVALID_INPUT, errors=errors
+        request,
+        status=HTTPStatus.UNPROCESSABLE_CONTENT,
+        code=ErrorCode.INVALID_INPUT,
+        errors=errors,
     )
 
 
 async def http_error(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, HTTPException)
-    status = exc.status_code if 400 <= exc.status_code <= 599 else 500
+    status = (
+        exc.status_code
+        if 400 <= exc.status_code <= 599
+        else HTTPStatus.INTERNAL_SERVER_ERROR
+    )
     code = {
-        404: ErrorCode.NOT_FOUND,
-        405: ErrorCode.METHOD_NOT_ALLOWED,
+        HTTPStatus.NOT_FOUND: ErrorCode.NOT_FOUND,
+        HTTPStatus.METHOD_NOT_ALLOWED: ErrorCode.METHOD_NOT_ALLOWED,
     }.get(status, ErrorCode.INTERNAL_ERROR if status >= 500 else ErrorCode.HTTP_ERROR)
     return problem_response(request, status=status, code=code, headers=exc.headers)
 
 
 async def internal_error(request: Request, exc: Exception) -> JSONResponse:
     # 원인 로그는 바깥의 관측 경계가 한 번만 기록합니다.
-    return problem_response(request, status=500, code=ErrorCode.INTERNAL_ERROR)
+    return problem_response(
+        request, status=HTTPStatus.INTERNAL_SERVER_ERROR, code=ErrorCode.INTERNAL_ERROR
+    )
 
 
 # FastAPI의 동적 response metadata 경계입니다.
@@ -114,7 +131,12 @@ PROBLEM_RESPONSES: dict[int | str, dict[str, Any]] = {
         "description": HTTPStatus(status).phrase,
         "model": Problem,
     }
-    for status in (404, 405, 422, 500)
+    for status in (
+        HTTPStatus.NOT_FOUND,
+        HTTPStatus.METHOD_NOT_ALLOWED,
+        HTTPStatus.UNPROCESSABLE_CONTENT,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
 }
 
 

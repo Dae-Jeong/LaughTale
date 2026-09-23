@@ -1,0 +1,21 @@
+[project]
+name = "platform-contracts"
+version = "0.1.0"
+description = "Shared wire contracts for the isolated chat platform simulator"
+authors = [
+    { name = "김대정", email = "155162939+Dae-Jeong@users.noreply.github.com" }
+]
+requires-python = ">=3.14.7,<3.15"
+dependencies = [
+    "pydantic>=2.12,<3",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]

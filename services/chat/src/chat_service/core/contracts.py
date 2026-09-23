@@ -6,6 +6,13 @@ from enum import StrEnum
 type Clock = Callable[[], datetime]
 
 
+class HealthStatus(StrEnum):
+    ALIVE = "alive"
+    READY = "ready"
+    NOT_READY = "not_ready"
+    UNAVAILABLE = "unavailable"
+
+
 class HttpCompletion(StrEnum):
     COMPLETE = "complete"
     CANCELLED = "cancelled"

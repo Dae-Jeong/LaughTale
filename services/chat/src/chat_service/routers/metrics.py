@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import cast
 
 from fastapi import APIRouter, Request, Response
@@ -12,15 +13,17 @@ router = APIRouter(tags=["metrics"])
     "/metrics",
     response_class=Response,
     responses={
-        200: {"content": {"text/plain": {}}},
-        503: {"description": "Metrics unavailable"},
+        HTTPStatus.OK: {"content": {"text/plain": {}}},
+        HTTPStatus.SERVICE_UNAVAILABLE: {"description": "Metrics unavailable"},
     },
 )
 def metrics(request: Request) -> Response:
     state = cast(HttpMetrics, request.app.state.metrics)
     if state.failed:
         return Response(
-            "Metrics unavailable\n", status_code=503, media_type="text/plain"
+            "Metrics unavailable\n",
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            media_type="text/plain",
         )
     try:
         return Response(
@@ -30,5 +33,7 @@ def metrics(request: Request) -> Response:
     except Exception:
         state.failed = True
         return Response(
-            "Metrics unavailable\n", status_code=503, media_type="text/plain"
+            "Metrics unavailable\n",
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            media_type="text/plain",
         )

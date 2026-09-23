@@ -1,0 +1,87 @@
+# Explicit V2 slice; not in base kustomization until runtime verification.
+# Recheck Docker IP (172.22.0.5) before applying this file.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: laughtale-chat-external
+spec:
+  ports: [{name: kafka, port: 9092, targetPort: 9092}]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: kafka-compose
+  namespace: laughtale-chat-external
+  labels:
+    kubernetes.io/service-name: kafka
+    endpointslice.kubernetes.io/managed-by: laughtale-lab
+addressType: IPv4
+ports: [{name: kafka, protocol: TCP, port: 9092}]
+endpoints:
+  - addresses: [172.22.0.5]
+    conditions: {ready: true}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: relay-dependencies
+  namespace: laughtale-chat-external
+spec:
+  podSelector: {matchLabels: {app: chat-relay}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 172.22.0.2/32}}]
+      ports: [{protocol: TCP, port: 5432}]
+    - to: [{ipBlock: {cidr: 172.22.0.5/32}}]
+      ports: [{protocol: TCP, port: 9092}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-relay
+  namespace: laughtale-chat-external
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: chat-relay}
+  template:
+    metadata:
+      labels: {app: chat-relay}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: relay
+          image: laughtale-chat:external-lab-v5
+          imagePullPolicy: Never
+          command: [python, -m, chat_service.relay]
+          env:
+            - name: DB_PRIMARY_URL
+              valueFrom:
+                secretKeyRef: {name: chat-lab-env, key: DB_PRIMARY_URL}
+            - {name: NETWORK_PROFILE, value: "isolated-lab"}
+            - {name: APP_ENVIRONMENT, value: "isolated-lab"}
+            - {name: SERVER_HOST, value: "0.0.0.0"}
+            - {name: SERVER_PORT, value: "18082"}
+            - {name: DB_POOL_SIZE, value: "1"}
+            - {name: DB_POOL_MAX_OVERFLOW, value: "0"}
+            - {name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092"}
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}

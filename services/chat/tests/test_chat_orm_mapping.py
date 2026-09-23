@@ -26,7 +26,12 @@ def test_models_share_metadata_without_implicit_relationships(
 
 def test_timestamp_is_opt_in_without_schema_expansion() -> None:
     assert issubclass(Message, CreatedAtMixin)
-    assert len(metadata.tables) == 4
+    assert {
+        "chat.users",
+        "chat.conversations",
+        "chat.members",
+        "chat.messages",
+    } <= metadata.tables.keys()
     for model in (User, Conversation, Member, Message):
         columns = inspect(model).local_table.c
         assert "updated_at" not in columns

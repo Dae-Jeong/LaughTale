@@ -1,0 +1,167 @@
+# Staged only. Root must finish isolated-lab network profile and verify image/secrets
+# before scaling from zero. HPA is deliberately outside the base kustomization.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat
+spec:
+  replicas: 0
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels: {app: chat}
+  template:
+    metadata:
+      labels: {app: chat}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: chat
+          image: laughtale-chat:external-lab-v8
+          imagePullPolicy: Never
+          command: [python, -m, chat_service.run]
+          ports: [{name: http, containerPort: 18082}]
+          envFrom:
+            - secretRef: {name: chat-lab-env}
+          env:
+            - {name: NETWORK_PROFILE, value: "isolated-lab"}
+            - {name: APP_ENVIRONMENT, value: "isolated-lab"}
+            - {name: DEV_SESSIONS_ENABLED, value: "true"}
+            - {name: SESSION_BACKEND, value: "postgres"}
+            - {name: LAB_INGRESS_ENABLED, value: "true"}
+            - name: LAB_INGRESS_TOKEN
+              valueFrom:
+                secretKeyRef: {name: chat-growth-env, key: LAB_INGRESS_TOKEN}
+            - name: LAB_POD_UID
+              valueFrom:
+                fieldRef: {fieldPath: metadata.uid}
+            - {name: EXTERNAL_ENABLED, value: "true"}
+            - {name: SERVER_HOST, value: "0.0.0.0"}
+            - {name: SERVER_PORT, value: "18082"}
+            - {name: MOCK_API_URL, value: "http://platform-mock:18087"}
+            - {name: DB_POOL_SIZE, value: "2"}
+            - {name: DB_POOL_MAX_OVERFLOW, value: "0"}
+            - {name: SHUTDOWN_TIMEOUT_SECONDS, value: "15"}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 300m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+          readinessProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18082/health/ready', timeout=1).close()"]
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          startupProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18082/health/ready', timeout=1).close()"]
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
+          lifecycle:
+            preStop:
+              exec:
+                command: [python, -c, "import time; time.sleep(5)"]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat
+spec:
+  selector: {app: chat}
+  ports: [{name: http, port: 18082, targetPort: http}]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chat
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: chat}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-mock
+spec:
+  replicas: 0
+  revisionHistoryLimit: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: platform-mock}
+  template:
+    metadata:
+      labels: {app: platform-mock}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: platform-mock
+          image: laughtale-platform-mock:external-lab-v1
+          imagePullPolicy: Never
+          command: [python, -m, platform_mock.run]
+          ports: [{name: http, containerPort: 18087}]
+          envFrom:
+            - secretRef: {name: platform-mock-lab-env}
+          env:
+            - {name: MOCK_SERVER_PORT, value: "18087"}
+            - {name: MOCK_NETWORK_PROFILE, value: "isolated-lab"}
+            - {name: MOCK_CHAT_BASE_URL, value: "http://chat:18082"}
+          resources:
+            requests: {cpu: 100m, memory: 96Mi}
+            limits: {cpu: 300m, memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+          readinessProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18087/health/ready', timeout=1).close()"]
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          startupProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18087/health/ready', timeout=1).close()"]
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
+          lifecycle:
+            preStop:
+              exec:
+                command: [python, -c, "import time; time.sleep(5)"]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-mock
+spec:
+  selector: {app: platform-mock}
+  ports: [{name: http, port: 18087, targetPort: http}]

@@ -1,0 +1,6 @@
+SELECT pg_temp.message_outbox.event_id, pg_temp.message_outbox.payload, pg_temp.message_outbox.published_at, pg_temp.message_outbox.claim_token, pg_temp.message_outbox.lease_until, pg_temp.message_outbox.attempts, pg_temp.message_outbox.next_attempt_at, pg_temp.message_outbox.last_error_code, pg_temp.message_outbox.created_at, pg_temp.messages.conversation_id
+FROM pg_temp.message_outbox JOIN pg_temp.messages ON pg_temp.messages.id = pg_temp.message_outbox.event_id
+WHERE pg_temp.message_outbox.published_at IS NULL AND (pg_temp.message_outbox.lease_until IS NULL OR pg_temp.message_outbox.lease_until <= clock_timestamp()) AND (pg_temp.message_outbox.next_attempt_at IS NULL OR pg_temp.message_outbox.next_attempt_at <= clock_timestamp()) AND NOT (EXISTS (SELECT message_outbox_1.event_id
+FROM pg_temp.message_outbox AS message_outbox_1 JOIN pg_temp.messages AS messages_1 ON messages_1.id = message_outbox_1.event_id
+WHERE messages_1.conversation_id = pg_temp.messages.conversation_id AND messages_1.seq < pg_temp.messages.seq AND message_outbox_1.published_at IS NULL)) ORDER BY pg_temp.message_outbox.created_at, pg_temp.message_outbox.event_id
+ LIMIT 1 FOR UPDATE OF message_outbox SKIP LOCKED
