@@ -1,0 +1,1 @@
+../../Obsidian/Operations/laughtale/tasks/project-coordination-trial.md

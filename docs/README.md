@@ -1,6 +1,6 @@
 # Project Documents
 
-이 디렉터리는 관리자가 승인한 프로젝트 규칙과 구현·검증을 마친 현재 시스템 기준을 보관합니다. 제안, 작업 체크리스트, 대화 정리는 `docs/`에 두지 않습니다. 아이디어와 stable task 문서의 canonical owner는 [Operations/Laughtale](/Users/marin/personal-workspace/Obsidian/Operations/Laughtale/index.md)이며 repo `.ideas/`와 `tasks/`는 그 문서의 compatibility facade입니다.
+이 디렉터리는 관리자가 승인한 프로젝트 규칙과 구현·검증을 마친 현재 시스템 기준을 보관합니다. 제안, 작업 체크리스트, 대화 정리는 `docs/`에 두지 않습니다. 아이디어와 stable task 문서의 canonical owner는 [Operations/laughtale](../../Obsidian/Operations/laughtale/index.md)이며 repo `.ideas/`와 `tasks/`는 그 문서의 compatibility facade입니다.
 
 개발 규칙은 승인 시 적용하지만, 문서에 규칙이 있다는 사실만으로 자동 검증이 구현되었다고
 간주하지 않습니다. 시스템 구조와 운영 사실의 승격에는 아래 구현·검증 조건을 적용합니다.
