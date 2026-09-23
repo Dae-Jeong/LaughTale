@@ -1,0 +1,61 @@
+{
+  "experiment": "E2",
+  "fixture": "temporary directory, removed after run",
+  "seed": "fixed A/B titles; random document ID",
+  "protected_statuses": [
+    200,
+    409
+  ],
+  "protected_final": {
+    "document": {
+      "schema_version": 1,
+      "id": "a559d48f-1043-47e0-bbe9-eabbced53ae8",
+      "title": "A edit",
+      "width": 800,
+      "height": 500,
+      "elements": []
+    },
+    "revision": 2
+  },
+  "broken_final": {
+    "revision": 1,
+    "document": {
+      "schema_version": 1,
+      "id": "a559d48f-1043-47e0-bbe9-eabbced53ae8",
+      "title": "B edit",
+      "width": 800,
+      "height": 500,
+      "elements": []
+    }
+  },
+  "before_status": 503,
+  "before_final": {
+    "revision": 1,
+    "document": {
+      "schema_version": 1,
+      "id": "a559d48f-1043-47e0-bbe9-eabbced53ae8",
+      "title": "B edit",
+      "width": 800,
+      "height": 500,
+      "elements": []
+    }
+  },
+  "lost_commit": {
+    "document": {
+      "schema_version": 1,
+      "id": "a559d48f-1043-47e0-bbe9-eabbced53ae8",
+      "title": "B edit",
+      "width": 800,
+      "height": 500,
+      "elements": []
+    },
+    "revision": 2
+  },
+  "retry_after_lost": 409,
+  "oracle": {
+    "protected_one_winner": true,
+    "broken_lost_update": true,
+    "before_unchanged": true,
+    "lost_persisted_and_retry_conflicts": true
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "at": "2026-09-18T13:58:45.435921+00:00",
+  "source_snapshot_at": "2026-09-18T13:54:54.136451+00:00",
+  "source_entries_preserved": 285,
+  "source_git_equal": true,
+  "copied_files": 25,
+  "intentional_changed_files": [
+    "AGENTS.md",
+    "README.md",
+    "experiments/run.py",
+    "tests/browser.mjs"
+  ],
+  "original_results_all_identical": true,
+  "http": {
+    "/": {
+      "status": 200,
+      "bytes": 3348
+    },
+    "/guide/": {
+      "status": 200,
+      "bytes": 10494
+    },
+    "/results/": {
+      "status": 200,
+      "bytes": 1986
+    },
+    "/api/documents": {
+      "status": 200,
+      "bytes": 17
+    }
+  },
+  "data_files": 0,
+  "old_repo_and_setup_absent": true,
+  "old_pid_exists": false,
+  "new_process": "28137 /Users/marin/.pyenv/versions/3.13.2/bin/python3 -u server.py --port 18120 --data-dir /Users/marin/personal-workspace/laughtale/services/editor-principles-lab/data\n",
+  "new_cwd": "p28137\nfcwd\nn/Users/marin/personal-workspace/laughtale/services/editor-principles-lab\n",
+  "sha256": {
+    "server.py": "7092e3ee2918cd540a771f6bb98b2b7768056dfdd697ad6865b1d3f4765b8c46",
+    "web/core.mjs": "53dd40b3e3867088448481e98fb7b9680892d29c1fb794f09f5fc4924b13ff12",
+    "results/report.md": "431ee05bf09d046f108743d5ebc44eef38bd902f9ae58ace7726c74b98901edf",
+    "migration/source-before.json": "890d7d36c5721831017421ea9c971c6d9e49bdff3f41c853a3f19e03eaeecc5d"
+  }
+}

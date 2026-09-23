@@ -1,0 +1,14 @@
+{
+  "status": "offline_checkpoint_passed",
+  "date": "2026-09-18",
+  "live_run": false,
+  "db_connections_attempted": 0,
+  "service_changes": false,
+  "tests": {"command": "python3 -m unittest discover -s tests -p test_index_compare.py -v", "passed": 6, "failed": 0},
+  "offline_command": "python3 experiments/index_compare.py",
+  "future_live_command": "python3 experiments/index_compare.py --run --host 127.0.0.1 --port 5434 --database editor_principles_lab --user ROLE",
+  "live_precondition": "Coordinator resumes P2 and confirms existing dedicated DB access and existing role; replace ROLE without putting credentials in reports",
+  "deferred": "Live PostgreSQL SQL execution, EXPLAIN and performance/correctness/rollback verification against actual engine",
+  "reason": "Coordinator redirect: basic interview first answers P0; DB index live measurement P2",
+  "review": "Author self-review only; learner understanding unmeasured"
+}

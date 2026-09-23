@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-18T13:23:50.328Z",
+  "browser": "153.0.8010.50",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "passed": [
+    "create text rectangle; edit title/text; keyboard movement",
+    "pointer drag is one undo entry; redo restores movement",
+    "pointer cancellation restores document and history",
+    "save and reload restore exact model",
+    "two tabs: 409 preserves local changes",
+    "server inspect preserves local until explicit adoption",
+    "503 retains local; retry succeeds",
+    "lost response shows unknown; server committed",
+    "late save response preserves edits; document switch disabled",
+    "guide/results routes and desktop layout"
+  ],
+  "errors": [],
+  "isolated": true
+}
